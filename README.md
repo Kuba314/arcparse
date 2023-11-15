@@ -21,6 +21,14 @@ print(f"Hi, my name is {args.name}!")
 
 For a complete overview of features see [Features](#features).
 
+## Installation
+```shell
+# Using pip
+$ pip install arcparse
+
+# locally using poetry
+$ poetry install
+```
 
 ## Features
 
