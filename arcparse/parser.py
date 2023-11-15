@@ -3,6 +3,7 @@ from dataclasses import make_dataclass
 from enum import StrEnum
 from types import NoneType, UnionType
 from typing import Any, Optional, Self, Union, get_args, get_origin
+import inspect
 
 from .argument import _Option, _BaseValueArgument, _Flag, _Positional, _BaseArgument, void
 
@@ -47,7 +48,10 @@ class ArcParser:
     @classmethod
     def parse(cls, defaults: dict[str, Any] = {}) -> Self:
         # collect declared typehints
-        all_params: dict[str, tuple[type, Any]] = {name: (typehint, void) for name, typehint in cls.__annotations__.items()}
+        all_params: dict[str, tuple[type, Any]] = {
+            name: (typehint, void)
+            for name, typehint in inspect.get_annotations(cls, eval_str=True).items()
+        }
 
         # collect declared defaults
         for key, value in vars(cls).items():
