@@ -61,12 +61,12 @@ class _InstanceCheckMeta(type):
 class ArcParser(metaclass=_InstanceCheckMeta):
     """Use _InstanceCheckMeta to allow for type-narrowing of subparser objects"""
     @classmethod
-    def parse(cls, defaults: dict[str, Any] = {}) -> Self:
+    def parse(cls, args: list[str] | None = None, defaults: dict[str, Any] = {}) -> Self:
         parser = ArgumentParser()
         cls._apply(parser, defaults=defaults)
-        args = parser.parse_args()
+        parsed = parser.parse_args(args)
 
-        return cls.from_dict(args.__dict__)
+        return cls.from_dict(parsed.__dict__)
 
     @classmethod
     def from_dict(cls, dict: dict[str, Any]) -> Self:
