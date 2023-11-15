@@ -137,7 +137,7 @@ class ArcParser:
                 typehint, _ = all_params[name]
                 is_optional = bool(_extract_optional_type(typehint))
                 is_collection = bool(_extract_collection_type(typehint))
-                if is_optional or is_collection and arg.default is not void:
+                if is_optional or is_collection or arg.default is not void:
                     arg.required = False
 
         parser = ArgumentParser()
