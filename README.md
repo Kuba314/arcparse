@@ -1,5 +1,7 @@
 # Arcparse
-Declare program arguments declaratively and type-safely. Optionally set argument defaults dynamically (see [Dynamic argument defaults](#dynamic-argument-defaults))
+Declare program arguments declaratively and type-safely. Optionally set argument defaults dynamically (see [Dynamic argument defaults](#dynamic-argument-defaults)).
+
+This project provides a wrapper around `argparse`. It adds type-safety and allows for more expressive argument parser definitions.
 
 Disclaimer: This library is young and probably highly unstable. Use at your own risk. Pull requests are welcome.
 
@@ -35,7 +37,7 @@ $ poetry install
 ### Required and optional arguments
 Arguments without explicitly assigned argument class are implicitly options (prefixed with `--`). A non-optional typehint results in `required=True` for options. Defaults can be set by directly assigning them. You can use `option()` to further customize the argument.
 ```py
-class Required(ArcParser):
+class Args(ArcParser):
     required: str
     optional: str | None
     default: str = "foo"
@@ -45,15 +47,15 @@ class Required(ArcParser):
 ### Positional arguments
 Positional arguments use `positional()`. Type-hinting the argument as `list[...]` uses `nargs="*"` in the background for positional arguments.
 ```py
-class Positional(ArcParser):
+class Args(ArcParser):
     single: str = positional()
     multiple: list[str] = positional()
 ```
 
 ### Flags
-All arguments type-hinted as `bool` are flags, they use `action="store_true"` in the background. Use `no_flag()` to easily create a `--no-...` with `action="store_false"`. Flags as well as options can also define short forms for each argument. They can also disable the long form with `short_only=True`.
+All arguments type-hinted as `bool` are flags, they use `action="store_true"` in the background. Use `no_flag()` to easily create a `--no-...` flag with `action="store_false"`. Flags as well as options can also define short forms for each argument. They can also disable the long form with `short_only=True`.
 ```py
-class FlagArgs(ArcParser):
+class Args(ArcParser):
     sync: bool
     recurse: bool = no_flag(help="Do not recurse")
 
@@ -62,9 +64,9 @@ class FlagArgs(ArcParser):
 ```
 
 ### Type conversions
-Automatic type conversions are supported. The type-hint is used in `type=...` in the background (unless it's `str`, which does no conversion). Using a `StrEnum` instance as a type-hint automatically populates `choices`. A custom type-converter can be used by passing `converter=...` to either `option` or `positional`.
+Automatic type conversions are supported. The type-hint is used in `type=...` in the background (unless it's `str`, which does no conversion). Using a `StrEnum` instance as a type-hint automatically populates `choices`. A custom type-converter can be used by passing `converter=...` to either `option()` or `positional()`.
 ```py
-class TypeArgs(ArcParser):
+class Args(ArcParser):
     class Result(StrEnum):
         PASS = "pass"
         FAIL = "fail"
@@ -82,7 +84,7 @@ class TypeArgs(ArcParser):
 ### Name overriding
 Type-hinting an option as `list[...]` uses `action="append"` in the background. Use this in combination with `name_override=...` to get rid of the `...s` suffixes.
 ```py
-class NameOverrideArgs(ArcParser):
+class Args(ArcParser):
     values: list[str] = option(name_override="value")
 ```
 
