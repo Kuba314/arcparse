@@ -4,7 +4,7 @@ from enum import StrEnum
 from types import NoneType, UnionType
 from typing import Any, Optional, Self, Union, get_args, get_origin
 
-from .argument import _Option, _BaseValueArgument, _Flag, _Positional, Argument, void
+from .argument import _Option, _BaseValueArgument, _Flag, _Positional, _BaseArgument, void
 
 
 
@@ -62,9 +62,9 @@ class ArcParser:
             all_params[key] = (typehint, value)
 
         # construct arguments
-        arguments: dict[str, Argument] = {}
+        arguments: dict[str, _BaseArgument] = {}
         for name, (typehint, default) in all_params.items():
-            if isinstance(default, Argument):
+            if isinstance(default, _BaseArgument):
                 # already an argument
                 argument = default
             else:

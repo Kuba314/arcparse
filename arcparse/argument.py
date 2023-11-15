@@ -11,7 +11,7 @@ void = Void()
 
 
 @dataclass(kw_only=True)
-class Argument(ABC):
+class _BaseArgument(ABC):
     name: str | None = None
     help: str | None = None
 
@@ -32,7 +32,7 @@ class Argument(ABC):
 
 
 @dataclass(kw_only=True)
-class _BaseValueArgument[T](Argument):
+class _BaseValueArgument[T](_BaseArgument):
     default: T | Void = void
     choices: list[T] | None = None
     converter: Callable[[str], T] | None = None
@@ -110,8 +110,9 @@ class _Option[T](_BaseValueArgument[T]):
 
         return kwargs
 
+
 @dataclass
-class _Flag(Argument):
+class _Flag(_BaseArgument):
     short: str | None = None
     short_only: bool = False
     default: bool = False
@@ -139,7 +140,7 @@ class _Flag(Argument):
 
 
 @dataclass
-class _NoFlag(Argument):
+class _NoFlag(_BaseArgument):
     def get_argparse_args(self) -> list[str]:
         assert self.name is not None, "name should be known at this point"
         return [f"--no-{self.name.replace("_", "-")}"]
