@@ -80,7 +80,6 @@ class ArcParser:
                     argument = _Option(default=default, choices=list(typ), converter=typ)
                 else:
                     argument = _Option(default=default, converter=typ if typ is not str else None)
-            argument.name = name
             arguments[name] = argument
 
         # apply additional defaults to arguments
@@ -145,8 +144,8 @@ class ArcParser:
                     arg.required = False
 
         parser = ArgumentParser()
-        for arg in arguments.values():
-            arg.apply(parser)
+        for name, arg in arguments.items():
+            arg.apply(parser, name)
 
         args = parser.parse_args()
 

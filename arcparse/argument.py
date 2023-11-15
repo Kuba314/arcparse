@@ -12,19 +12,18 @@ void = Void()
 
 @dataclass(kw_only=True)
 class _BaseArgument(ABC):
-    name: str | None = None
     help: str | None = None
 
-    def apply(self, parser: ArgumentParser) -> None:
-        args = self.get_argparse_args()
-        kwargs = self.get_argparse_kwargs()
+    def apply(self, parser: ArgumentParser, name: str) -> None:
+        args = self.get_argparse_args(name)
+        kwargs = self.get_argparse_kwargs(name)
         parser.add_argument(*args, **kwargs)
 
     @abstractmethod
-    def get_argparse_args(self) -> list[str]:
+    def get_argparse_args(self, name: str) -> list[str]:
         ...
 
-    def get_argparse_kwargs(self) -> dict[str, Any]:
+    def get_argparse_kwargs(self, name: str) -> dict[str, Any]:
         kwargs = {}
         if self.help is not None:
             kwargs["help"] = self.help
@@ -40,8 +39,8 @@ class _BaseValueArgument[T](_BaseArgument):
     multiple: bool = False
     required: bool = False
 
-    def get_argparse_kwargs(self) -> dict[str, Any]:
-        kwargs = super().get_argparse_kwargs()
+    def get_argparse_kwargs(self, name: str) -> dict[str, Any]:
+        kwargs = super().get_argparse_kwargs(name)
         if self.converter is not None:
             kwargs["type"] = self.converter
         if self.default is not void:
@@ -57,18 +56,16 @@ class _BaseValueArgument[T](_BaseArgument):
 
 @dataclass
 class _Positional[T](_BaseValueArgument[T]):
-    def get_argparse_args(self) -> list[str]:
-        assert self.name is not None, "name should be known at this point"
+    def get_argparse_args(self, name: str) -> list[str]:
         if self.name_override is not None:
             return [self.name_override]
-        return [self.name]
+        return [name]
 
-    def get_argparse_kwargs(self) -> dict[str, Any]:
-        assert self.name is not None, "name should be known at this point"
-        kwargs = super().get_argparse_kwargs()
+    def get_argparse_kwargs(self, name: str) -> dict[str, Any]:
+        kwargs = super().get_argparse_kwargs(name)
         if self.multiple:
             kwargs["nargs"] = "*"
-            kwargs["metavar"] = self.name.upper()
+            kwargs["metavar"] = name.upper()
         elif not self.required:
             kwargs["nargs"] = "?"
         return kwargs
@@ -79,10 +76,9 @@ class _Option[T](_BaseValueArgument[T]):
     short: str | None = None
     short_only: bool = False
 
-    def get_argparse_args(self) -> list[str]:
-        assert self.name is not None, "name should be known at this point"
+    def get_argparse_args(self, name: str) -> list[str]:
 
-        name = self.name_override if self.name_override is not None else self.name.replace("_", "-")
+        name = self.name_override if self.name_override is not None else name.replace("_", "-")
         args = [f"--{name}"]
         if self.short_only:
             assert self.short is not None
@@ -92,18 +88,17 @@ class _Option[T](_BaseValueArgument[T]):
 
         return args
 
-    def get_argparse_kwargs(self) -> dict[str, Any]:
-        assert self.name is not None, "name should be known at this point"
+    def get_argparse_kwargs(self, name: str) -> dict[str, Any]:
 
-        kwargs = super().get_argparse_kwargs()
+        kwargs = super().get_argparse_kwargs(name)
         if self.multiple:
             kwargs["action"] = "append"
 
         if self.name_override is not None:
-            kwargs["dest"] = self.name
+            kwargs["dest"] = name
             kwargs["metavar"] = self.name_override.replace("-", "_").upper()
         elif self.short_only:
-            kwargs["dest"] = self.name
+            kwargs["dest"] = name
 
         if self.required:
             kwargs["required"] = True
@@ -117,10 +112,9 @@ class _Flag(_BaseArgument):
     short_only: bool = False
     default: bool = False
 
-    def get_argparse_args(self) -> list[str]:
-        assert self.name is not None, "name should be known at this point"
+    def get_argparse_args(self, name: str) -> list[str]:
 
-        args = [f"--{self.name.replace("_", "-")}"]
+        args = [f"--{name.replace("_", "-")}"]
         if self.short_only:
             assert self.short is not None
             return [self.short]
@@ -129,28 +123,25 @@ class _Flag(_BaseArgument):
 
         return args
 
-    def get_argparse_kwargs(self) -> dict[str, Any]:
-        kwargs = super().get_argparse_kwargs()
+    def get_argparse_kwargs(self, name: str) -> dict[str, Any]:
+        kwargs = super().get_argparse_kwargs(name)
         kwargs["action"] = "store_false" if self.default else "store_true"
 
-        assert self.name is not None, "name should be known at this point"
         if self.short_only:
-            kwargs["dest"] = self.name
+            kwargs["dest"] = name
         return kwargs
 
 
 @dataclass
 class _NoFlag(_BaseArgument):
-    def get_argparse_args(self) -> list[str]:
-        assert self.name is not None, "name should be known at this point"
-        return [f"--no-{self.name.replace("_", "-")}"]
+    def get_argparse_args(self, name: str) -> list[str]:
+        return [f"--no-{name.replace("_", "-")}"]
 
-    def get_argparse_kwargs(self) -> dict[str, Any]:
-        kwargs = super().get_argparse_kwargs()
+    def get_argparse_kwargs(self, name: str) -> dict[str, Any]:
+        kwargs = super().get_argparse_kwargs(name)
         kwargs["action"] = "store_false"
 
-        assert self.name is not None, "name should be known at this point"
-        kwargs["dest"] = self.name
+        kwargs["dest"] = name
         return kwargs
 
 
