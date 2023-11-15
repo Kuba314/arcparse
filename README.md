@@ -88,6 +88,36 @@ class Args(ArcParser):
     values: list[str] = option(name_override="value")
 ```
 
+### Subparsers
+Type-hinting an argument as a union of ArcParser subclasses creates subparsers in the background. Assigning from `subparsers()` gives them names as they will be entered from the command-line. Subparsers are required by default. Adding `None` to the union makes the subparsers optional.
+```py
+class FooArgs(ArcParser):
+    arg1: str
+
+class BarArgs(ArcParser):
+    arg2: int = positional()
+
+class Args(ArcParser):
+    action: FooArgs | BarArgs = subparsers("foo", "bar")
+
+class OptionalSubparsersArgs(ArcParser):
+    action: FooArgs | BarArgs | None = subparsers("foo", "bar")
+```
+
+Once the arguments are parsed, the different subparsers can be triggered and distinguished like so:
+```shell
+python3 script.py foo --arg1 baz
+python3 script.py bar --arg2 123
+```
+```py
+args = Args.parse()
+if isinstance(foo := args.action, FooArgs):
+    print(f"foo {foo.arg1}")
+elif isinstance(bar := args.action, BarArgs):
+    print(f"bar {bar.arg2}")
+```
+Be aware that even though the `isinstance()` check passes, the instantiated subparser objects are never actual instances of their class because a dynamically created `dataclass` is used instead. The `isinstance()` relation is faked using a metaclass overriding `__instancecheck__()`.
+
 ## Dynamic argument defaults
 The `parse()` classmethod supports an optional dictionary of defaults, which replace the statically defined defaults before parsing arguments. This might be useful for saving some arguments in a config file allowing the user to provide only the ones that are not present in the config.
 

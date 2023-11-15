@@ -1,3 +1,4 @@
+from __future__ import annotations
 from argparse import ArgumentParser
 from dataclasses import make_dataclass
 from enum import StrEnum
@@ -6,7 +7,7 @@ from typing import Any, Optional, Self, Union, get_args, get_origin
 import inspect
 
 from .argument import _Option, _BaseValueArgument, _Flag, _Positional, _BaseArgument, void
-
+from .subparser import _Subparsers
 
 
 def _extract_optional_type(typehint: type) -> type | None:
@@ -27,6 +28,13 @@ def _extract_collection_type(typehint: type) -> type | None:
     return None
 
 
+def _extract_subparsers_from_typehint(typehint: type) -> list[type[ArcParser]] | None:
+    origin = get_origin(typehint)
+    if origin in {Union, UnionType}:
+        return list(get_args(typehint))
+    return None
+
+
 def _extract_type_from_typehint(typehint: type) -> type:
     if optional_type := _extract_optional_type(typehint):
         return optional_type
@@ -41,12 +49,138 @@ def _to_bool(value: str) -> bool:
     elif value == "false":
         return False
     else:
-        raise Exception(f"Could not parse bool from \"{value}\"")
+        raise Exception(f'Could not parse bool from "{value}"')
 
 
-class ArcParser:
+class _InstanceCheckMeta(type):
+    """Only check whether class-name is equal in isinstance()"""
+    def __instancecheck__(self, __instance: Any) -> bool:
+        return self.__name__ == __instance.__class__.__name__
+
+
+class ArcParser(metaclass=_InstanceCheckMeta):
+    """Use _InstanceCheckMeta to allow for type-narrowing of subparser objects"""
     @classmethod
     def parse(cls, defaults: dict[str, Any] = {}) -> Self:
+        parser = ArgumentParser()
+        cls._apply(parser, defaults=defaults)
+        args = parser.parse_args()
+
+        return cls.from_dict(args.__dict__)
+
+    @classmethod
+    def from_dict(cls, dict: dict[str, Any]) -> Self:
+        values = {}
+        if subparsers_triple := cls.__collect_subparsers():
+            name, subparsers, subparser_types = subparsers_triple
+
+            # optional subparsers will result in `dict[name]` being `None`
+            if chosen_subparser := dict[name]:
+                subparser_type = subparser_types[subparsers.names.index(chosen_subparser)]
+                values[name] = subparser_type.from_dict(dict)
+
+        annotations = inspect.get_annotations(cls, eval_str=True)
+        for name in annotations.keys():
+            # skip already added subparser result
+            if name in values:
+                continue
+
+            values[name] = dict.pop(name)
+
+        dto_cls = make_dataclass(cls.__name__, fields=annotations)
+        def instancecheck(inst) -> bool:
+            return cls.__name__ == inst.__class__.__name__
+        dto_cls.__instancecheck__ = instancecheck.__get__(cls, type)
+        return dto_cls(**values)
+
+    @classmethod
+    def _apply(cls, parser: ArgumentParser, defaults: dict[str, Any] = {}) -> None:
+        typehints, arguments = cls.__collect_arguments()
+
+        # apply additional defaults to arguments
+        for name, default in defaults.items():
+            if name not in arguments:
+                raise Exception("Unknown param provided")
+
+            arg = arguments[name]
+
+            typehint = typehints[name]
+            desired_type = _extract_type_from_typehint(typehint)
+            if desired_type is bool:
+                if not isinstance(arg, _Flag):
+                    raise Exception("Flag argument expected for bool types")
+                arg.default = _to_bool(default)
+            else:
+                if not isinstance(arg, _BaseValueArgument):
+                    raise Exception(
+                        "Non-flag argument type expected for non-bool types"
+                    )
+                converter = arg.converter
+                if converter is None:
+                    converter = desired_type
+
+                if not isinstance(default, desired_type):
+                    default = converter(default)
+                arg.default = default
+
+        # update `converter` if not set
+        for name, arg in arguments.items():
+            if not isinstance(arg, _BaseValueArgument):
+                continue
+
+            if arg.converter is not None:
+                continue
+
+            type_ = _extract_type_from_typehint(typehints[name])
+            if type_ is not str:
+                arg.converter = type_
+
+        # update `multiple`
+        for name, arg in arguments.items():
+            if not isinstance(arg, _BaseValueArgument):
+                continue
+
+            if _extract_collection_type(typehints[name]):
+                arg.multiple = True
+
+        # update `required` and `optional`
+        for name, arg in arguments.items():
+            if isinstance(arg, _Option):
+                typehint = typehints[name]
+                is_optional = bool(_extract_optional_type(typehint))
+                is_collection = bool(_extract_collection_type(typehint))
+                if not is_optional and not is_collection and arg.default is void:
+                    arg.required = True
+            elif isinstance(arg, _Positional):
+                typehint = typehints[name]
+                is_optional = bool(_extract_optional_type(typehint))
+                is_collection = bool(_extract_collection_type(typehint))
+                if is_optional or is_collection or arg.default is not void:
+                    arg.required = False
+
+        for name, arg in arguments.items():
+            arg.apply(parser, name)
+
+        if subparsers_triple := cls.__collect_subparsers():
+            name, subparsers, subparser_types = subparsers_triple
+            subparsers.apply(parser, name, subparser_types, defaults=defaults)
+
+    @classmethod
+    def __collect_subparsers(cls) -> tuple[str, _Subparsers, list[type[ArcParser]]] | None:
+        subparsers = [(key, value) for key, value in vars(cls).items() if isinstance(value, _Subparsers)]
+        match subparsers:
+            case []:
+                return None
+            case [(name, value)]:
+                typehint = inspect.get_annotations(cls, eval_str=True)[name]
+                if not (subparser_types := _extract_subparsers_from_typehint(typehint)):
+                    raise Exception(f"Unable to extract subparser types from {typehint}, expected a non-empty union of ArcParser types")
+                return name, value, subparser_types
+            case _:
+                raise Exception(f"Multiple subparsers definitions found on {cls}")
+
+    @classmethod
+    def __collect_arguments(cls) -> tuple[dict[str, type], dict[str, _BaseArgument]]:
         # collect declared typehints
         all_params: dict[str, tuple[type, Any]] = {
             name: (typehint, void)
@@ -68,8 +202,10 @@ class ArcParser:
         # construct arguments
         arguments: dict[str, _BaseArgument] = {}
         for name, (typehint, default) in all_params.items():
+            if isinstance(default, _Subparsers):
+                continue
+
             if isinstance(default, _BaseArgument):
-                # already an argument
                 argument = default
             else:
                 typ = _extract_type_from_typehint(typehint)
@@ -82,73 +218,7 @@ class ArcParser:
                     argument = _Option(default=default, converter=typ if typ is not str else None)
             arguments[name] = argument
 
-        # apply additional defaults to arguments
-        for name, default in defaults.items():
-            if name not in arguments:
-                raise Exception("Unknown param provided")
-
-            arg = arguments[name]
-
-            typehint, _ = all_params[name]
-            desired_type = _extract_type_from_typehint(typehint)
-            if desired_type is bool:
-                if not isinstance(arg, _Flag):
-                    raise Exception("Flag argument expected for bool types")
-                arg.default = _to_bool(default)
-            else:
-                if not isinstance(arg, _BaseValueArgument):
-                    raise Exception("Non-flag argument type expected for non-bool types")
-                converter = arg.converter
-                if converter is None:
-                    converter = desired_type
-
-                if not isinstance(default, desired_type):
-                    default = converter(default)
-                arg.default = default
-
-        # update `converter` if not set
-        for name, arg in arguments.items():
-            if not isinstance(arg, _BaseValueArgument):
-                continue
-
-            if arg.converter is not None:
-                continue
-
-            typehint, _ = all_params[name]
-            type_ = _extract_type_from_typehint(typehint)
-            if type_ is not str:
-                arg.converter = type_
-
-        # update `multiple`
-        for name, arg in arguments.items():
-            if not isinstance(arg, _BaseValueArgument):
-                continue
-
-            typehint, _ = all_params[name]
-            if _extract_collection_type(typehint):
-                arg.multiple = True
-
-        # update `required` and `optional`
-        for name, arg in arguments.items():
-            if isinstance(arg, _Option):
-                typehint, _ = all_params[name]
-                is_optional = bool(_extract_optional_type(typehint))
-                is_collection = bool(_extract_collection_type(typehint))
-                if not is_optional and not is_collection and arg.default is void:
-                    arg.required = True
-            elif isinstance(arg, _Positional):
-                typehint, _ = all_params[name]
-                is_optional = bool(_extract_optional_type(typehint))
-                is_collection = bool(_extract_collection_type(typehint))
-                if is_optional or is_collection or arg.default is not void:
-                    arg.required = False
-
-        parser = ArgumentParser()
-        for name, arg in arguments.items():
-            arg.apply(parser, name)
-
-        args = parser.parse_args()
-
-        # create a temporary dataclass to shove parsed args into
-        dto_cls = make_dataclass(cls.__name__, fields={(name, typ) for name, (typ, _) in all_params.items()})
-        return dto_cls(**args.__dict__)
+        return (
+            {name: typehint for name, (typehint, _) in all_params.items()},
+            arguments,
+        )
