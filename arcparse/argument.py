@@ -18,7 +18,6 @@ class Argument(ABC):
     def register(self, parser: ArgumentParser) -> None:
         args = self.get_argparse_args()
         kwargs = self.get_argparse_kwargs()
-        print(f"add_argument({args}, {kwargs})")
         parser.add_argument(*args, **kwargs)
 
     @abstractmethod
