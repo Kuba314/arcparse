@@ -15,7 +15,7 @@ class _BaseArgument(ABC):
     name: str | None = None
     help: str | None = None
 
-    def register(self, parser: ArgumentParser) -> None:
+    def apply(self, parser: ArgumentParser) -> None:
         args = self.get_argparse_args()
         kwargs = self.get_argparse_kwargs()
         parser.add_argument(*args, **kwargs)

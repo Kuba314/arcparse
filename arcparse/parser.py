@@ -142,7 +142,7 @@ class ArcParser:
 
         parser = ArgumentParser()
         for arg in arguments.values():
-            arg.register(parser)
+            arg.apply(parser)
 
         args = parser.parse_args()
 
