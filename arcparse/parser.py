@@ -223,7 +223,7 @@ class ArcParser(metaclass=_InstanceCheckMeta):
                 if typ is bool:
                     if _extract_optional_type(typehint):
                         raise Exception("Unable to make type=bool, everything would be True")
-                    argument = _Flag(default=default)
+                    argument = _Flag()
                 elif isinstance(typ, StrEnum):
                     argument = _Option(default=default, choices=list(typ), converter=typ)
                 else:

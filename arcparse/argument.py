@@ -113,7 +113,6 @@ class _Flag(_BaseArgument):
     default: bool = False
 
     def get_argparse_args(self, name: str) -> list[str]:
-
         args = [f"--{name.replace("_", "-")}"]
         if self.short_only:
             assert self.short is not None
