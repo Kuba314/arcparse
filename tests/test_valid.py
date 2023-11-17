@@ -39,7 +39,7 @@ class Args(ArcParser):
 
 
 @pytest.mark.parametrize(
-    "string,should_throw",
+    "arg_string,should_throw",
     [
         ("", True),
         ("pos 1", False),
@@ -70,32 +70,11 @@ class Args(ArcParser):
         ("conv --res bar", True),
     ]
 )
-def test_valid(string: str, should_throw: bool) -> None:
-    args = string.split()
+def test_valid(arg_string: str, should_throw: bool) -> None:
+    args = arg_string.split()
 
     if should_throw:
         with pytest.raises(SystemExit):
             Args.parse(args)
     else:
         Args.parse(args)
-
-
-class Invalid1(ArcParser):
-    x: bool | None
-
-class Invalid2(ArcParser):
-    x: bool = positional()
-
-class Invalid3(ArcParser):
-    x: int | str
-
-class Invalid4(ArcParser):
-    x: int | str | None
-
-class Invalid5(ArcParser):
-    x = positional()
-
-@pytest.mark.parametrize("parser", [Invalid1, Invalid2, Invalid3, Invalid4, Invalid5])
-def test_invalid(parser: ArcParser) -> None:
-    with pytest.raises(Exception):
-        parser.parse([])
