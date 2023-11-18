@@ -1,5 +1,5 @@
 from .parser import ArcParser
-from .argument import positional, option, flag, no_flag
+from .arguments import positional, option, flag, no_flag
 from .subparser import subparsers
 
 __all__ = [

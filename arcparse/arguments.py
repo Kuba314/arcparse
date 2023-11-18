@@ -89,7 +89,6 @@ class _Option[T](_BaseValueArgument[T]):
         return args
 
     def get_argparse_kwargs(self, name: str) -> dict[str, Any]:
-
         kwargs = super().get_argparse_kwargs(name)
         if self.multiple:
             kwargs["action"] = "append"

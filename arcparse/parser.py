@@ -6,7 +6,7 @@ from types import NoneType, UnionType
 from typing import Any, Optional, Self, Union, get_args, get_origin
 import inspect
 
-from .argument import _Option, _BaseValueArgument, _Flag, _Positional, _BaseArgument, void
+from .arguments import _Option, _BaseValueArgument, _Flag, _Positional, _BaseArgument, void
 from .subparser import _Subparsers
 
 
