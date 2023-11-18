@@ -73,8 +73,10 @@ class Args(ArcParser):
 
 ### Type conversions
 Automatic type conversions are supported. The type-hint is used in `type=...` in the background (unless it's `str`, which does no conversion). Using a `StrEnum` instance as a type-hint automatically populates `choices`. A custom type-converter can be used by passing `converter=...` to either `option()` or `positional()`. Come common utility converters are defined in [converters.py](arcparse/converters.py).
+
+Custom converters may be used in combination with multiple values per argument. These converters are called `itemwise` and need to be wrapped in `itemwise()`. This wrapper is used automatically if an argument is typed as `list[...]` and no converter is set.
 ```py
-from arcparse.converters import csv
+from arcparse.converters import csv, itemwise
 
 class Args(ArcParser):
     class Result(StrEnum):
@@ -90,6 +92,7 @@ class Args(ArcParser):
     result: Result
     custom: Result = option(converter=Result.from_int)
     ints: list[int] = option(converter=csv(int))
+    results: list[Result] = option(converter=itemwise(Result.from_int))
 ```
 
 ### Name overriding

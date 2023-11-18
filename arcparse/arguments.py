@@ -1,8 +1,11 @@
 from abc import ABC, abstractmethod
 from argparse import ArgumentParser
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from collections.abc import Callable
 from typing import Any
+
+from .converters import itemwise
+from .typehints import extract_collection_type, extract_optional_type, extract_type_from_typehint
 
 class Void:
     pass
@@ -13,6 +16,7 @@ void = Void()
 @dataclass(kw_only=True)
 class _BaseArgument(ABC):
     help: str | None = None
+    typehint: type = field(init=False, default=Void)
 
     def apply(self, parser: ArgumentParser, name: str) -> None:
         args = self.get_argparse_args(name)
@@ -28,6 +32,9 @@ class _BaseArgument(ABC):
         if self.help is not None:
             kwargs["help"] = self.help
         return kwargs
+
+    def resolve_with_typehint(self, typehint: type) -> None:
+        self.typehint = typehint
 
 
 @dataclass(kw_only=True)
@@ -53,6 +60,24 @@ class _BaseValueArgument[T](_BaseArgument):
 
         return kwargs
 
+    def resolve_with_typehint(self, typehint: type) -> None:
+        super().resolve_with_typehint(typehint)
+
+        # assume multiple arguments if no converter set and expected type is a collection
+        if (
+            (self.converter is None and extract_collection_type(typehint))
+            or (isinstance(self.converter, itemwise))
+        ):
+            self.multiple = True
+
+        if self.converter is None:
+            type_ = extract_type_from_typehint(typehint)
+            if type_ is bool:
+                raise Exception("Argument yielding a value can't be typed as `bool`")
+
+            if type_ is not str:
+                self.converter = type_
+
 
 @dataclass
 class _Positional[T](_BaseValueArgument[T]):
@@ -69,6 +94,13 @@ class _Positional[T](_BaseValueArgument[T]):
         elif not self.required:
             kwargs["nargs"] = "?"
         return kwargs
+
+    def resolve_with_typehint(self, typehint: type) -> None:
+        super().resolve_with_typehint(typehint)
+        is_optional = bool(extract_optional_type(typehint))
+        is_collection = bool(extract_collection_type(typehint))
+        if is_optional or is_collection or self.default is not void:
+            self.required = False
 
 
 @dataclass
@@ -108,12 +140,18 @@ class _Option[T](_BaseValueArgument[T]):
 
         return kwargs
 
+    def resolve_with_typehint(self, typehint: type) -> None:
+        super().resolve_with_typehint(typehint)
+        is_optional = bool(extract_optional_type(typehint))
+        is_collection = bool(extract_collection_type(typehint))
+        if not is_optional and not is_collection and self.default is void:
+            self.required = True
+
 
 @dataclass
 class _Flag(_BaseArgument):
     short: str | None = None
     short_only: bool = False
-    default: bool = False
 
     def get_argparse_args(self, name: str) -> list[str]:
         args = [f"--{name.replace("_", "-")}"]
@@ -127,7 +165,7 @@ class _Flag(_BaseArgument):
 
     def get_argparse_kwargs(self, name: str) -> dict[str, Any]:
         kwargs = super().get_argparse_kwargs(name)
-        kwargs["action"] = "store_false" if self.default else "store_true"
+        kwargs["action"] = "store_true"
 
         if self.short_only:
             kwargs["dest"] = name

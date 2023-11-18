@@ -1,7 +1,30 @@
+from enum import StrEnum, auto
+from typing import Self
 import pytest
 
-from arcparse import ArcParser, option
+from arcparse import ArcParser, option, itemwise
 from arcparse.converters import csv
+
+
+def test_itemwise() -> None:
+    class Result(StrEnum):
+        PASS = auto()
+        FAIL = auto()
+
+        @classmethod
+        def from_int(cls, arg: str) -> Self:
+            number = int(arg)
+            return cls.PASS if number == 1 else cls.FAIL
+
+    class Args(ArcParser):
+        results: list[Result] = option(converter=itemwise(Result.from_int))
+
+    args = Args.parse("--results 0 1 0".split())
+    assert isinstance(args.results, list)
+    assert len(args.results) == 3
+    assert args.results[0] == Result.FAIL
+    assert args.results[1] == Result.PASS
+    assert args.results[2] == Result.FAIL
 
 
 @pytest.mark.parametrize(
