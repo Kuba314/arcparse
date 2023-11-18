@@ -45,11 +45,11 @@ class Args(ArcParser):
 ```
 
 ### Positional arguments
-Positional arguments use `positional()`. Type-hinting the argument as `list[...]` uses `nargs="*"` in the background for positional arguments.
+Positional arguments use `positional()`. Optional type-hints use `nargs="?"` in the background.
 ```py
 class Args(ArcParser):
-    single: str = positional()
-    multiple: list[str] = positional()
+    required: str = positional()
+    optional: str | None = positional()
 ```
 
 ### Flags
@@ -61,6 +61,14 @@ class Args(ArcParser):
 
     debug: bool = flag("-d")  # both -d and --debug
     verbose: bool = flag("-v", short_only=True)  # only -v
+```
+
+### Multiple values per argument
+By type-hinting the argument as `list[...]`, the argument will use `nargs="*"` in the background. Passing `append=True` to `option()` uses `action="append"` instead (this is available only for `option()`).
+```py
+class Args(ArcParser):
+    option_nargs: list[str]
+    positional_nargs: list[str] = positional()
 ```
 
 ### Type conversions
