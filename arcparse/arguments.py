@@ -75,6 +75,7 @@ class _Positional[T](_BaseValueArgument[T]):
 class _Option[T](_BaseValueArgument[T]):
     short: str | None = None
     short_only: bool = False
+    append: bool = False
 
     def get_argparse_args(self, name: str) -> list[str]:
 
@@ -91,7 +92,10 @@ class _Option[T](_BaseValueArgument[T]):
     def get_argparse_kwargs(self, name: str) -> dict[str, Any]:
         kwargs = super().get_argparse_kwargs(name)
         if self.multiple:
-            kwargs["action"] = "append"
+            if self.append:
+                kwargs["action"] = "append"
+            else:
+                kwargs["nargs"] = "*"
 
         if self.name_override is not None:
             kwargs["dest"] = name
@@ -168,6 +172,7 @@ def option[T](
     choices: list[T] | None = None,
     converter: Callable[[str], T] | None = None,
     name_override: str | None = None,
+    append: bool = False,
     help: str | None = None,
 ) -> T:
     if short_only and short is None:
@@ -180,6 +185,7 @@ def option[T](
         converter=converter,
         name_override=name_override,
         required=False,
+        append=append,
         help=help,
     )  # type: ignore
 
