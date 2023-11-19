@@ -1,5 +1,4 @@
 from enum import StrEnum, auto
-from typing import Self
 import pytest
 
 from arcparse import ArcParser, option, itemwise
@@ -12,7 +11,7 @@ def test_itemwise() -> None:
         FAIL = auto()
 
         @classmethod
-        def from_int(cls, arg: str) -> Self:
+        def from_int(cls, arg: str) -> "Result":
             number = int(arg)
             return cls.PASS if number == 1 else cls.FAIL
 

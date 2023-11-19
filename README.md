@@ -84,7 +84,7 @@ class Args(ArcParser):
         FAIL = "fail"
 
         @classmethod
-        def from_int(cls, arg: str) -> Self:
+        def from_int(cls, arg: str) -> Result:
             number = int(arg)
             return cls.PASS if number == 1 else cls.FAIL
 
