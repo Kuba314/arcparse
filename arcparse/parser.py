@@ -3,47 +3,14 @@ from argparse import ArgumentParser
 from dataclasses import make_dataclass
 from enum import StrEnum
 from types import NoneType, UnionType
-from typing import Any, Optional, Self, Union, get_args, get_origin
+from typing import Any, Self, Union, get_args, get_origin
 import inspect
 
 from .arguments import _Option, _BaseValueArgument, _Flag, _Positional, _BaseArgument, void
 from .subparser import _Subparsers
+from .typehints import extract_collection_type, extract_subparsers_from_typehint, extract_type_from_typehint, extract_subparsers_from_typehint
 
 
-def _extract_optional_type(typehint: type) -> type | None:
-    origin = get_origin(typehint)
-    if origin == Optional:
-        return get_args(typehint)[0]
-    elif origin in {Union, UnionType}:
-        args = get_args(typehint)
-        if len(args) == 2:
-            if args[0] == NoneType:
-                return args[1]
-            elif args[1] == NoneType:
-                return args[0]
-    return None
-
-
-def _extract_collection_type(typehint: type) -> type | None:
-    origin = get_origin(typehint)
-    if origin == list:
-        return get_args(typehint)[0]
-    return None
-
-
-def _extract_subparsers_from_typehint(typehint: type) -> list[type[ArcParser]] | None:
-    origin = get_origin(typehint)
-    if origin in {Union, UnionType}:
-        return list(get_args(typehint))
-    return None
-
-
-def _extract_type_from_typehint(typehint: type) -> type:
-    if optional_type := _extract_optional_type(typehint):
-        return optional_type
-    elif collection_type := _extract_collection_type(typehint):
-        return collection_type
-    return typehint
 
 
 def _to_bool(value: str) -> bool:
@@ -108,7 +75,7 @@ class ArcParser(metaclass=_InstanceCheckMeta):
             arg = arguments[name]
 
             typehint = typehints[name]
-            desired_type = _extract_type_from_typehint(typehint)
+            desired_type = extract_type_from_typehint(typehint)
             if desired_type is bool:
                 if not isinstance(arg, _Flag):
                     raise Exception("Flag argument expected for bool types")
@@ -134,7 +101,7 @@ class ArcParser(metaclass=_InstanceCheckMeta):
             if arg.converter is not None:
                 continue
 
-            type_ = _extract_type_from_typehint(typehints[name])
+            type_ = extract_type_from_typehint(typehints[name])
             if type_ is not str:
                 arg.converter = type_
 
@@ -143,21 +110,21 @@ class ArcParser(metaclass=_InstanceCheckMeta):
             if not isinstance(arg, _BaseValueArgument):
                 continue
 
-            if _extract_collection_type(typehints[name]):
+            if extract_collection_type(typehints[name]):
                 arg.multiple = True
 
         # update `required` and `optional`
         for name, arg in arguments.items():
             if isinstance(arg, _Option):
                 typehint = typehints[name]
-                is_optional = bool(_extract_optional_type(typehint))
-                is_collection = bool(_extract_collection_type(typehint))
+                is_optional = bool(extract_optional_type(typehint))
+                is_collection = bool(extract_collection_type(typehint))
                 if not is_optional and not is_collection and arg.default is void:
                     arg.required = True
             elif isinstance(arg, _Positional):
                 typehint = typehints[name]
-                is_optional = bool(_extract_optional_type(typehint))
-                is_collection = bool(_extract_collection_type(typehint))
+                is_optional = bool(extract_optional_type(typehint))
+                is_collection = bool(extract_collection_type(typehint))
                 if is_optional or is_collection or arg.default is not void:
                     arg.required = False
 
@@ -176,7 +143,7 @@ class ArcParser(metaclass=_InstanceCheckMeta):
                 return None
             case [(name, value)]:
                 typehint = inspect.get_annotations(cls, eval_str=True)[name]
-                if not (subparser_types := _extract_subparsers_from_typehint(typehint)):
+                if not (subparser_types := extract_subparsers_from_typehint(typehint)):
                     raise Exception(f"Unable to extract subparser types from {typehint}, expected a non-empty union of ArcParser types")
                 return name, value, subparser_types
             case _:
@@ -213,15 +180,15 @@ class ArcParser(metaclass=_InstanceCheckMeta):
                 if len(union_args) > 2 or NoneType not in union_args:
                     raise Exception("Union can be used only for optional arguments (length of 2, 1 of them being None)")
 
-            if isinstance(default, _BaseValueArgument) and _extract_type_from_typehint(typehint) == bool:
+            if isinstance(default, _BaseValueArgument) and extract_type_from_typehint(typehint) == bool:
                 raise Exception("Unable to make type=bool, everything would be True")
             elif isinstance(default, _BaseArgument):
                 argument = default
             else:
-                typ = _extract_type_from_typehint(typehint)
+                typ = extract_type_from_typehint(typehint)
 
                 if typ is bool:
-                    if _extract_optional_type(typehint):
+                    if extract_optional_type(typehint):
                         raise Exception("Unable to make type=bool, everything would be True")
                     argument = _Flag()
                 elif isinstance(typ, StrEnum):
