@@ -1,6 +1,7 @@
 from .parser import ArcParser
-from .argument import positional, option, flag, no_flag
+from .arguments import positional, option, flag, no_flag
 from .subparser import subparsers
+from .converters import itemwise
 
 __all__ = [
     "ArcParser",
@@ -9,4 +10,5 @@ __all__ = [
     "flag",
     "no_flag",
     "subparsers",
+    "itemwise",
 ]

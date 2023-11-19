@@ -45,11 +45,11 @@ class Args(ArcParser):
 ```
 
 ### Positional arguments
-Positional arguments use `positional()`. Type-hinting the argument as `list[...]` uses `nargs="*"` in the background for positional arguments.
+Positional arguments use `positional()`. Optional type-hints use `nargs="?"` in the background.
 ```py
 class Args(ArcParser):
-    single: str = positional()
-    multiple: list[str] = positional()
+    required: str = positional()
+    optional: str | None = positional()
 ```
 
 ### Flags
@@ -63,22 +63,36 @@ class Args(ArcParser):
     verbose: bool = flag("-v", short_only=True)  # only -v
 ```
 
-### Type conversions
-Automatic type conversions are supported. The type-hint is used in `type=...` in the background (unless it's `str`, which does no conversion). Using a `StrEnum` instance as a type-hint automatically populates `choices`. A custom type-converter can be used by passing `converter=...` to either `option()` or `positional()`.
+### Multiple values per argument
+By type-hinting the argument as `list[...]`, the argument will use `nargs="*"` in the background. Passing `append=True` to `option()` uses `action="append"` instead (this is available only for `option()`).
 ```py
+class Args(ArcParser):
+    option_nargs: list[str]
+    positional_nargs: list[str] = positional()
+```
+
+### Type conversions
+Automatic type conversions are supported. The type-hint is used in `type=...` in the background (unless it's `str`, which does no conversion). Using a `StrEnum` instance as a type-hint automatically populates `choices`. A custom type-converter can be used by passing `converter=...` to either `option()` or `positional()`. Come common utility converters are defined in [converters.py](arcparse/converters.py).
+
+Custom converters may be used in combination with multiple values per argument. These converters are called `itemwise` and need to be wrapped in `itemwise()`. This wrapper is used automatically if an argument is typed as `list[...]` and no converter is set.
+```py
+from arcparse.converters import csv, itemwise
+
 class Args(ArcParser):
     class Result(StrEnum):
         PASS = "pass"
         FAIL = "fail"
 
         @classmethod
-        def from_int(cls, arg: str) -> Self:
+        def from_int(cls, arg: str) -> Result:
             number = int(arg)
             return cls.PASS if number == 1 else cls.FAIL
 
     number: int
     result: Result
     custom: Result = option(converter=Result.from_int)
+    ints: list[int] = option(converter=csv(int))
+    results: list[Result] = option(converter=itemwise(Result.from_int))
 ```
 
 ### Name overriding
@@ -123,3 +137,8 @@ The `parse()` classmethod supports an optional dictionary of defaults, which rep
 
 ## Credits
 This project was inspired by [swansonk14/typed-argument-parser](https://github.com/swansonk14/typed-argument-parser).
+
+## Known issues
+
+### Annotations
+`from __future__ import annotations` makes all annotations strings at runtime. This library relies on class variable annotations's types being actual types. `inspect.get_annotations(obj, eval_str=True)` is used to evaluate string annotations to types in order to assign converters. If an argument is annotated with a non-builtin type which is defined outside of the argument-defining class body the type can't be found which results in `NameError`s. This is avoidable either by only using custom types which have been defined in the argument-defining class body (which is restrictive), or alternatively by not using the `annotations` import which should not be necessary from python 3.13 forward thanks to [PEP 649](https://peps.python.org/pep-0649/).
