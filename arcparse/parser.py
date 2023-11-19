@@ -1,6 +1,7 @@
 from __future__ import annotations
 from argparse import ArgumentParser
 from dataclasses import make_dataclass
+from collections.abc import Sequence
 from enum import StrEnum
 from types import NoneType, UnionType
 from typing import Any, Self, Union, get_args, get_origin
@@ -30,7 +31,7 @@ class _InstanceCheckMeta(type):
 class ArcParser(metaclass=_InstanceCheckMeta):
     """Use _InstanceCheckMeta to allow for type-narrowing of subparser objects"""
     @classmethod
-    def parse(cls, args: list[str] | None = None, defaults: dict[str, Any] = {}) -> Self:
+    def parse(cls, args: Sequence[str] | None = None, defaults: dict[str, Any] = {}) -> Self:
         parser = ArgumentParser()
         cls._apply(parser, defaults=defaults)
         parsed = parser.parse_args(args)
