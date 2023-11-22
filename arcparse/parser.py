@@ -7,7 +7,8 @@ from types import NoneType, UnionType
 from typing import Any, Self, Union, get_args, get_origin
 import inspect
 
-from .arguments import _Option, _BaseValueArgument, _Flag, _BaseArgument, void
+from .arguments import _Option, _BaseValueArgument, _Flag, _BaseArgument, _ValueOverride, void
+from .converters import itemwise
 from .subparser import _Subparsers
 from .typehints import extract_collection_type, extract_subparsers_from_typehint, extract_type_from_typehint
 from .converters import itemwise
@@ -33,10 +34,10 @@ class ArcParser(metaclass=_InstanceCheckMeta):
     @classmethod
     def parse(cls, args: Sequence[str] | None = None, defaults: dict[str, Any] = {}) -> Self:
         parser = ArgumentParser()
-        cls._apply(parser, defaults=defaults)
+        already_resolved = cls._apply(parser, defaults=defaults)
         parsed = parser.parse_args(args)
 
-        return cls.from_dict(parsed.__dict__)
+        return cls.from_dict(already_resolved | parsed.__dict__)
 
     @classmethod
     def from_dict(cls, dict: dict[str, Any]) -> Self:
@@ -64,7 +65,8 @@ class ArcParser(metaclass=_InstanceCheckMeta):
         return dto_cls(**values)
 
     @classmethod
-    def _apply(cls, parser: ArgumentParser, defaults: dict[str, Any] = {}) -> None:
+    def _apply(cls, parser: ArgumentParser, defaults: dict[str, Any] = {}) -> dict[str, Any]:
+        """Apply arguments and defaults to ArgumentParser returning already resolved values"""
         arguments = cls.__collect_arguments()
 
         cls.__apply_argument_defaults(arguments, defaults)
@@ -75,6 +77,13 @@ class ArcParser(metaclass=_InstanceCheckMeta):
         if subparsers_triple := cls.__collect_subparsers():
             name, subparsers, subparser_types = subparsers_triple
             subparsers.apply(parser, name, subparser_types, defaults=defaults)
+
+        return {
+            name: arg.value_override
+            for name, arg in arguments.items()
+            if isinstance(arg, _ValueOverride) and arg.value_override is not void
+        }
+
 
     @classmethod
     def __collect_arguments(cls) -> dict[str, _BaseArgument]:
@@ -160,6 +169,10 @@ class ArcParser(metaclass=_InstanceCheckMeta):
                 raise Exception("Unknown param provided")
 
             arg = arguments[name]
+            if isinstance(arg, _ValueOverride):
+                arg.value_override = default
+                continue
+
             if not isinstance(arg, _BaseValueArgument):
                 raise Exception(f"Argument \"{name}\" is not a value argument, can't set its default")
 

@@ -19,6 +19,10 @@ class _BaseArgument(ABC):
     typehint: type = field(init=False, default=Void)
 
     def apply(self, parser: ArgumentParser, name: str) -> None:
+        # value is overriden, do not add argument
+        if isinstance(self, _ValueOverride) and self.value_override is not void:
+            return
+
         args = self.get_argparse_args(name)
         kwargs = self.get_argparse_kwargs(name)
         parser.add_argument(*args, **kwargs)
@@ -44,7 +48,7 @@ class _BaseValueArgument[T](_BaseArgument):
     converter: Callable[[str], T] | None = None
     name_override: str | None = None
     multiple: bool = False
-    required: bool = False
+    type_requires_value: bool = False
 
     def get_argparse_kwargs(self, name: str) -> dict[str, Any]:
         kwargs = super().get_argparse_kwargs(name)
@@ -91,7 +95,7 @@ class _Positional[T](_BaseValueArgument[T]):
         if self.multiple:
             kwargs["nargs"] = "*"
             kwargs["metavar"] = name.upper()
-        elif not self.required:
+        elif not self.type_requires_value or self.default is not void:
             kwargs["nargs"] = "?"
         return kwargs
 
@@ -99,8 +103,8 @@ class _Positional[T](_BaseValueArgument[T]):
         super().resolve_with_typehint(typehint)
         is_optional = bool(extract_optional_type(typehint))
         is_collection = bool(extract_collection_type(typehint))
-        if is_optional or is_collection or self.default is not void:
-            self.required = False
+        if is_optional or is_collection:
+            self.type_requires_value = False
 
 
 @dataclass
@@ -110,7 +114,6 @@ class _Option[T](_BaseValueArgument[T]):
     append: bool = False
 
     def get_argparse_args(self, name: str) -> list[str]:
-
         name = self.name_override if self.name_override is not None else name.replace("_", "-")
         args = [f"--{name}"]
         if self.short_only:
@@ -135,7 +138,7 @@ class _Option[T](_BaseValueArgument[T]):
         elif self.short_only:
             kwargs["dest"] = name
 
-        if self.required:
+        if self.type_requires_value and self.default is void:
             kwargs["required"] = True
 
         return kwargs
@@ -144,12 +147,24 @@ class _Option[T](_BaseValueArgument[T]):
         super().resolve_with_typehint(typehint)
         is_optional = bool(extract_optional_type(typehint))
         is_collection = bool(extract_collection_type(typehint))
-        if not is_optional and not is_collection and self.default is void:
-            self.required = True
+        if not is_optional and not is_collection:
+            self.type_requires_value = True
+
+
+@dataclass(kw_only=True)
+class _ValueOverride[T]:
+    """Value override for arguments
+
+    Utilized in flags and no_flags when providing dynamic defaults for them.
+    Setting a non-void `value_override` causes the argument to not be included
+    into ArgumentParser and the value will be always contained in the return
+    arguments.
+    """
+    value_override: T | Void = void
 
 
 @dataclass
-class _Flag(_BaseArgument):
+class _Flag(_ValueOverride[bool], _BaseArgument):
     short: str | None = None
     short_only: bool = False
 
@@ -173,7 +188,7 @@ class _Flag(_BaseArgument):
 
 
 @dataclass
-class _NoFlag(_BaseArgument):
+class _NoFlag(_ValueOverride[bool], _BaseArgument):
     def get_argparse_args(self, name: str) -> list[str]:
         return [f"--no-{name.replace("_", "-")}"]
 
@@ -197,7 +212,7 @@ def positional[T](
         choices=choices,
         converter=converter,
         name_override=name_override,
-        required=True,
+        type_requires_value=True,
         help=help,
     )  # type: ignore
 
@@ -222,7 +237,7 @@ def option[T](
         choices=choices,
         converter=converter,
         name_override=name_override,
-        required=False,
+        type_requires_value=False,
         append=append,
         help=help,
     )  # type: ignore
