@@ -6,6 +6,7 @@ from enum import StrEnum
 from types import NoneType, UnionType
 from typing import Any, Self, Union, get_args, get_origin
 import inspect
+import re
 
 from .arguments import _Option, _BaseValueArgument, _Flag, _BaseArgument, _ValueOverride, void
 from .converters import itemwise
@@ -159,6 +160,8 @@ class ArcParser(metaclass=_InstanceCheckMeta):
 
         if issubclass(actual_type, StrEnum):
             return _Option(default=default, choices=list(actual_type), converter=converter)
+        elif actual_type == re.Pattern:
+            return _Option(default=default, converter=re.compile)
 
         return _Option(default=default, converter=converter if actual_type is not str else None)
 
