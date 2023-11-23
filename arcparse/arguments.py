@@ -201,6 +201,7 @@ class _NoFlag(_ValueOverride[bool], _BaseArgument):
 
 
 def positional[T](
+    *,
     default: T | Void = void,
     choices: list[T] | None = None,
     converter: Callable[[str], T] | None = None,
