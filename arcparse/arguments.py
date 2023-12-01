@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from argparse import ArgumentParser
 from dataclasses import dataclass, field
 from collections.abc import Callable
-from typing import Any
+from typing import Any, Literal, overload
 
 from .converters import itemwise
 from .typehints import extract_collection_type, extract_optional_type, extract_type_from_typehint
@@ -48,6 +48,7 @@ class _BaseValueArgument[T](_BaseArgument):
     converter: Callable[[str], T] | None = None
     name_override: str | None = None
     multiple: bool = False
+    at_least_one: bool = False
     type_requires_value: bool = False
 
     def get_argparse_kwargs(self, name: str) -> dict[str, Any]:
@@ -58,7 +59,7 @@ class _BaseValueArgument[T](_BaseArgument):
             kwargs["default"] = self.default
         if self.choices is not None:
             kwargs["choices"] = self.choices
-        if self.multiple:
+        if self.multiple and not self.at_least_one:
             if self.default is void:
                 kwargs["default"] = []
 
@@ -93,7 +94,7 @@ class _Positional[T](_BaseValueArgument[T]):
     def get_argparse_kwargs(self, name: str) -> dict[str, Any]:
         kwargs = super().get_argparse_kwargs(name)
         if self.multiple:
-            kwargs["nargs"] = "*"
+            kwargs["nargs"] = "+" if self.at_least_one else "*"
             kwargs["metavar"] = name.upper()
         elif not self.type_requires_value or self.default is not void:
             kwargs["nargs"] = "?"
@@ -130,7 +131,7 @@ class _Option[T](_BaseValueArgument[T]):
             if self.append:
                 kwargs["action"] = "append"
             else:
-                kwargs["nargs"] = "*"
+                kwargs["nargs"] = "+" if self.at_least_one else "*"
 
         if self.name_override is not None:
             kwargs["dest"] = name
@@ -138,7 +139,7 @@ class _Option[T](_BaseValueArgument[T]):
         elif self.short_only:
             kwargs["dest"] = name
 
-        if self.type_requires_value and self.default is void:
+        if self.default is void and (self.type_requires_value or self.at_least_one):
             kwargs["required"] = True
 
         return kwargs
@@ -200,24 +201,49 @@ class _NoFlag(_ValueOverride[bool], _BaseArgument):
         return kwargs
 
 
+@overload
 def positional[T](
     *,
     default: T | Void = void,
     choices: list[T] | None = None,
     converter: Callable[[str], T] | None = None,
     name_override: str | None = None,
+    at_least_one: Literal[False] = False,
     help: str | None = None,
-) -> T:
+) -> T: ...
+
+@overload
+def positional[T](
+    *,
+    default: list[T] | Void = void,
+    choices: list[T] | None = None,
+    converter: Callable[[str], list[T]] | None = None,
+    name_override: str | None = None,
+    at_least_one: Literal[True] = True,
+    help: str | None = None,
+) -> list[T]: ...
+
+def positional(  # type: ignore
+    *,
+    default=void,
+    choices=None,
+    converter=None,
+    name_override=None,
+    at_least_one=False,
+    help=None,
+):
     return _Positional(
         default=default,
         choices=choices,
         converter=converter,
         name_override=name_override,
         type_requires_value=True,
+        at_least_one=at_least_one,
         help=help,
-    )  # type: ignore
+    )
 
 
+@overload
 def option[T](
     short: str | None = None,
     *,
@@ -226,9 +252,52 @@ def option[T](
     choices: list[T] | None = None,
     converter: Callable[[str], T] | None = None,
     name_override: str | None = None,
-    append: bool = False,
+    append: Literal[False] = False,
+    at_least_one: Literal[False] = False,
     help: str | None = None,
-) -> T:
+) -> T: ...
+
+
+@overload
+def option[T](
+    short: str | None = None,
+    *,
+    short_only: bool = False,
+    default: list[T] | Void = void,
+    choices: list[T] | None = None,
+    converter: Callable[[str], list[T]] | None = None,
+    name_override: str | None = None,
+    append: Literal[True] = True,
+    at_least_one: Literal[False] = False,
+    help: str | None = None,
+) -> list[T]: ...
+
+@overload
+def option[T](
+    short: str | None = None,
+    *,
+    short_only: bool = False,
+    default: list[T] | Void = void,
+    choices: list[T] | None = None,
+    converter: Callable[[str], list[T]] | None = None,
+    name_override: str | None = None,
+    append: Literal[False] = False,
+    at_least_one: Literal[True] = True,
+    help: str | None = None,
+) -> list[T]: ...
+
+def option(  # type: ignore
+    short=None,
+    *,
+    short_only=False,
+    default=void,
+    choices=None,
+    converter=None,
+    name_override=None,
+    append=False,
+    at_least_one=False,
+    help=None,
+):
     if short_only and short is None:
         raise Exception("`short_only` cannot be True if `short` is not provided")
     return _Option(
@@ -240,8 +309,9 @@ def option[T](
         name_override=name_override,
         type_requires_value=False,
         append=append,
+        at_least_one=at_least_one,
         help=help,
-    )  # type: ignore
+    )
 
 
 def flag(

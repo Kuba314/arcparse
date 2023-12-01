@@ -3,14 +3,6 @@ import pytest
 from arcparse import ArcParser, positional, option
 
 
-def test_unnecessary_append() -> None:
-    class Args(ArcParser):
-        non_list: str = option(append=True)
-
-    with pytest.raises(SystemExit):
-        Args.parse(["--non-list foo"])
-
-
 @pytest.mark.parametrize(
     "string,result",
     [
@@ -40,6 +32,47 @@ def test_pos_nargs(string: str, result: list[int]) -> None:
 
     args = Args.parse(string.split())
     assert args.values == result
+
+
+@pytest.mark.parametrize(
+    "string,result",
+    [
+        ("", None),
+        ("--values", None),
+        ("--values 1", [1]),
+        ("--values 1 2", [1, 2]),
+    ],
+)
+def test_opt_nargs_plus(string: str, result: list[int] | None) -> None:
+    class Args(ArcParser):
+        values: list[int] = option(at_least_one=True)
+
+    if result is None:
+        with pytest.raises(SystemExit):
+            Args.parse(string.split())
+    else:
+        args = Args.parse(string.split())
+        assert args.values == result
+
+
+@pytest.mark.parametrize(
+    "string,result",
+    [
+        ("", None),
+        ("1", [1]),
+        ("1 2", [1, 2]),
+    ],
+)
+def test_pos_nargs_plus(string: str, result: list[int] | None) -> None:
+    class Args(ArcParser):
+        values: list[int] = positional(at_least_one=True)
+
+    if result is None:
+        with pytest.raises(SystemExit):
+            Args.parse(string.split())
+    else:
+        args = Args.parse(string.split())
+        assert args.values == result
 
 
 @pytest.mark.parametrize(

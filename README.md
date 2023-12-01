@@ -64,12 +64,17 @@ class Args(ArcParser):
 ```
 
 ### Multiple values per argument
-By type-hinting the argument as `list[...]`, the argument will use `nargs="*"` in the background. Passing `append=True` to `option()` uses `action="append"` instead (this is available only for `option()`).
+By type-hinting the argument as `list[...]`, the argument will use `nargs="*"` in the background. Passing `at_least_one=True` uses `nargs="+"` instead. Passing `append=True` to `option()` uses `action="append"` instead (this is available only for `option()` and incompatible with `at_least_one`).
 ```py
 class Args(ArcParser):
     option_nargs: list[str]
     positional_nargs: list[str] = positional()
+    append_option: list[str] = option(append=True)
+    nargs_plus_option: list[str] = option(at_least_one=True)
+    nargs_plus_positional: list[str] = positional(at_least_one=True)
 ```
+
+Note that `option(at_least_one=True)` will cause the option to be required. If this is not intended, provide a default value.
 
 ### Type conversions
 Automatic type conversions are supported. The type-hint is used in `type=...` in the background (unless it's `str`, which does no conversion). Using a `StrEnum` subclass as a type-hint automatically populates `choices`. Using a `re.Pattern` typehint automatically uses `re.compile` as a converter. A custom type-converter can be used by passing `converter=...` to either `option()` or `positional()`. Come common utility converters are defined in [converters.py](arcparse/converters.py).
