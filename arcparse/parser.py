@@ -152,6 +152,8 @@ class ArcParser(metaclass=_InstanceCheckMeta):
         actual_type = extract_type_from_typehint(typehint)
         if actual_type is bool:
             raise Exception(f"Can't construct argument with inner type bool, conversion would be always True")
+        elif getattr(actual_type, "_is_protocol", False):
+            raise Exception("Argument with no converter can't be typed as a Protocol subclass")
 
         if type_ := extract_collection_type(typehint):
             converter = itemwise(type_)
@@ -185,6 +187,8 @@ class ArcParser(metaclass=_InstanceCheckMeta):
             else:
                 converter = arg.converter or desired_type
 
-                if not isinstance(default, desired_type):
+                # only check whether the default is the correct type when the type supports isinstance checks
+                is_runtime_checkable = not getattr(desired_type, "_is_protocol", False) or getattr(desired_type, "_is_runtime_protocol", False)
+                if is_runtime_checkable and not isinstance(default, desired_type):
                     default = converter(default)
                 arg.default = default
