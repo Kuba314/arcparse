@@ -14,8 +14,19 @@ class Void:
 void = Void()
 
 
+class MxGroup:
+    def __init__(self, *, required: bool = False):
+        self.required = required
+
+    def apply(self, parser: ArgumentParser, arguments_by_name: list[tuple[str, "_BaseArgument"]]):
+        group = parser.add_mutually_exclusive_group(required=self.required)
+        for name, argument in arguments_by_name:
+            argument.apply(group, name)
+
+
 @dataclass(kw_only=True)
 class _BaseArgument(ABC):
+    mx_group: MxGroup | None = None
     help: str | None = None
     typehint: type = field(init=False, default=Void)
 
@@ -210,6 +221,7 @@ def positional[T](
     converter: Callable[[str], T] | None = None,
     name_override: str | None = None,
     at_least_one: Literal[False] = False,
+    mx_group: MxGroup | None = None,
     help: str | None = None,
 ) -> T: ...
 
@@ -221,6 +233,7 @@ def positional[T](
     converter: Callable[[str], list[T]] | None = None,
     name_override: str | None = None,
     at_least_one: Literal[True] = True,
+    mx_group: MxGroup | None = None,
     help: str | None = None,
 ) -> list[T]: ...
 
@@ -231,6 +244,7 @@ def positional(  # type: ignore
     converter=None,
     name_override=None,
     at_least_one=False,
+    mx_group=None,
     help=None,
 ):
     return _Positional(
@@ -240,6 +254,7 @@ def positional(  # type: ignore
         name_override=name_override,
         type_requires_value=True,
         at_least_one=at_least_one,
+        mx_group=mx_group,
         help=help,
     )
 
@@ -255,6 +270,7 @@ def option[T](
     name_override: str | None = None,
     append: Literal[False] = False,
     at_least_one: Literal[False] = False,
+    mx_group: MxGroup | None = None,
     help: str | None = None,
 ) -> T: ...
 
@@ -270,6 +286,7 @@ def option[T](
     name_override: str | None = None,
     append: Literal[True] = True,
     at_least_one: Literal[False] = False,
+    mx_group: MxGroup | None = None,
     help: str | None = None,
 ) -> list[T]: ...
 
@@ -284,6 +301,7 @@ def option[T](
     name_override: str | None = None,
     append: Literal[False] = False,
     at_least_one: Literal[True] = True,
+    mx_group: MxGroup | None = None,
     help: str | None = None,
 ) -> list[T]: ...
 
@@ -297,6 +315,7 @@ def option(  # type: ignore
     name_override=None,
     append=False,
     at_least_one=False,
+    mx_group=None,
     help=None,
 ):
     if short_only and short is None:
@@ -311,6 +330,7 @@ def option(  # type: ignore
         type_requires_value=False,
         append=append,
         at_least_one=at_least_one,
+        mx_group=mx_group,
         help=help,
     )
 
@@ -319,6 +339,7 @@ def flag(
     short: str | None = None,
     *,
     short_only: bool = False,
+    mx_group: MxGroup | None = None,
     help: str | None = None,
 ) -> bool:
     if short_only and short is None:
@@ -327,8 +348,9 @@ def flag(
         short=short,
         short_only=short_only,
         help=help,
+        mx_group=mx_group,
     )  # type: ignore
 
 
-def no_flag(*, help: str | None = None) -> bool:
-    return _NoFlag(help=help)  # type: ignore
+def no_flag(*, mx_group: MxGroup | None = None, help: str | None = None) -> bool:
+    return _NoFlag(mx_group=mx_group, help=help)  # type: ignore

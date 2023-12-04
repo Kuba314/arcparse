@@ -8,7 +8,7 @@ from typing import Any, Self, Union, get_args, get_origin
 import inspect
 import re
 
-from .arguments import _Option, _BaseValueArgument, _Flag, _BaseArgument, _ValueOverride, void
+from .arguments import _Option, _BaseValueArgument, _Flag, _BaseArgument, _ValueOverride, MxGroup, void
 from .converters import itemwise
 from .subparser import _Subparsers
 from .typehints import extract_collection_type, extract_subparsers_from_typehint, extract_type_from_typehint
@@ -72,8 +72,16 @@ class ArcParser(metaclass=_InstanceCheckMeta):
 
         cls.__apply_argument_defaults(arguments, defaults)
 
+        args_by_mx_group: dict[MxGroup, list[tuple[str, _BaseArgument]]] = {}
         for name, arg in arguments.items():
-            arg.apply(parser, name)
+            if arg.mx_group is None:
+                arg.apply(parser, name)
+            else:
+                args_by_mx_group.setdefault(arg.mx_group, []).append((name, arg))
+
+        for group, args_by_name in args_by_mx_group.items():
+            group.apply(parser, args_by_name)
+
 
         if subparsers_triple := cls.__collect_subparsers():
             name, subparsers, subparser_types = subparsers_triple

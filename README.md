@@ -109,6 +109,15 @@ class Args(ArcParser):
     values: list[str] = option(name_override="value")
 ```
 
+### Mutually exclusive groups
+Use `mx_group` to group multiple arguments together in a mutually exclusive group. Each argument has to have a default defined either implicitly through the type (being `bool` or a union with `None`) or explicitly with `default`.
+```py
+class Args(ArcParser):
+    group = MxGroup()  # alternatively use `(group := MxGroup())` on the next line
+    flag: bool = flag(mx_group=group)
+    option: str | None = option(mx_group=group)
+```
+
 ### Subparsers
 Type-hinting an argument as a union of ArcParser subclasses creates subparsers in the background. Assigning from `subparsers()` gives them names as they will be entered from the command-line. Subparsers are required by default. Adding `None` to the union makes the subparsers optional.
 ```py
