@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
-from argparse import ArgumentParser
+from argparse import ArgumentParser, _ActionsContainer
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from collections.abc import Callable
 from typing import Any, Literal, overload
@@ -18,14 +19,14 @@ class _BaseArgument(ABC):
     help: str | None = None
     typehint: type = field(init=False, default=Void)
 
-    def apply(self, parser: ArgumentParser, name: str) -> None:
+    def apply(self, actions_container: _ActionsContainer, name: str) -> None:
         # value is overriden, do not add argument
         if isinstance(self, _ValueOverride) and self.value_override is not void:
             return
 
         args = self.get_argparse_args(name)
         kwargs = self.get_argparse_kwargs(name)
-        parser.add_argument(*args, **kwargs)
+        actions_container.add_argument(*args, **kwargs)
 
     @abstractmethod
     def get_argparse_args(self, name: str) -> list[str]:
