@@ -28,3 +28,12 @@ class Invalid7(ArcParser):
 def test_invalid(parser: ArcParser) -> None:
     with pytest.raises(Exception):
         parser.parse([])
+
+
+
+def test_untyped_variable() -> None:
+    class Args(ArcParser):
+        foo = 1
+
+    with pytest.raises(SystemExit):
+        Args.parse(["--foo", "2"])

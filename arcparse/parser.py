@@ -100,8 +100,11 @@ class ArcParser(metaclass=_InstanceCheckMeta):
             if callable(value) or isinstance(value, property) or (key.startswith("__") and key.endswith("__")):
                 continue
 
+            # ignore untyped class variables
             if key not in all_params:
-                raise Exception(f"Argument {key} is missing a type-hint")
+                if isinstance(value, _BaseArgument):
+                    raise Exception(f"Argument {key} is missing a type-hint and would be ignored")
+                continue
 
             typehint, _ = all_params[key]
             all_params[key] = (typehint, value)
