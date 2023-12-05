@@ -7,10 +7,11 @@ Disclaimer: This library is young and probably highly unstable. Use at your own 
 
 ## Example usage
 ```py
-from arcparse import ArcParser, positional
+from arcparse import arcparser, positional
 
 
-class Args(ArcParser):
+@arcparser
+class Args:
     name: str = positional()
     age: int = positional()
     hobbies: list[str] = positional()
@@ -37,7 +38,8 @@ $ poetry install
 ### Required and optional arguments
 Arguments without explicitly assigned argument class are implicitly options (prefixed with `--`). A non-optional typehint results in `required=True` for options. Defaults can be set by directly assigning them. You can use `option()` to further customize the argument.
 ```py
-class Args(ArcParser):
+@arcparser
+class Args:
     required: str
     optional: str | None
     default: str = "foo"
@@ -47,7 +49,8 @@ class Args(ArcParser):
 ### Positional arguments
 Positional arguments use `positional()`. Optional type-hints use `nargs="?"` in the background.
 ```py
-class Args(ArcParser):
+@arcparser
+class Args:
     required: str = positional()
     optional: str | None = positional()
 ```
@@ -55,7 +58,8 @@ class Args(ArcParser):
 ### Flags
 All arguments type-hinted as `bool` are flags, they use `action="store_true"` in the background. Use `no_flag()` to easily create a `--no-...` flag with `action="store_false"`. Flags as well as options can also define short forms for each argument. They can also disable the long form with `short_only=True`.
 ```py
-class Args(ArcParser):
+@arcparser
+class Args:
     sync: bool
     recurse: bool = no_flag(help="Do not recurse")
 
@@ -66,7 +70,8 @@ class Args(ArcParser):
 ### Multiple values per argument
 By type-hinting the argument as `list[...]`, the argument will use `nargs="*"` in the background. Passing `at_least_one=True` uses `nargs="+"` instead. Passing `append=True` to `option()` uses `action="append"` instead (this is available only for `option()` and incompatible with `at_least_one`).
 ```py
-class Args(ArcParser):
+@arcparser
+class Args:
     option_nargs: list[str]
     positional_nargs: list[str] = positional()
     append_option: list[str] = option(append=True)
@@ -93,7 +98,8 @@ Custom converters may be used in combination with multiple values per argument. 
 from arcparse.converters import sv, csv, sv_dict, itemwise
 from re import Pattern
 
-class Args(ArcParser):
+@arcparser
+class Args:
     class Result(StrEnum):
         PASS = "pass"
         FAIL = "fail"
@@ -116,7 +122,8 @@ class Args(ArcParser):
 ### Mutually exclusive groups
 Use `mx_group` to group multiple arguments together in a mutually exclusive group. Each argument has to have a default defined either implicitly through the type (being `bool` or a union with `None`) or explicitly with `default`.
 ```py
-class Args(ArcParser):
+@arcparser
+class Args:
     group = MxGroup()  # alternatively use `(group := MxGroup())` on the next line
     flag: bool = flag(mx_group=group)
     option: str | None = option(mx_group=group)
@@ -125,16 +132,20 @@ class Args(ArcParser):
 ### Subparsers
 Type-hinting an argument as a union of ArcParser subclasses creates subparsers in the background. Assigning from `subparsers()` gives them names as they will be entered from the command-line. Subparsers are required by default. Adding `None` to the union makes the subparsers optional.
 ```py
-class FooArgs(ArcParser):
+@arcparser
+class FooArgs:
     arg1: str
 
-class BarArgs(ArcParser):
+@arcparser
+class BarArgs:
     arg2: int = positional()
 
-class Args(ArcParser):
+@arcparser
+class Args:
     action: FooArgs | BarArgs = subparsers("foo", "bar")
 
-class OptionalSubparsersArgs(ArcParser):
+@arcparser
+class OptionalSubparsersArgs:
     action: FooArgs | BarArgs | None = subparsers("foo", "bar")
 ```
 

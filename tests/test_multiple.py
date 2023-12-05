@@ -1,6 +1,6 @@
 import pytest
 
-from arcparse import ArcParser, option, positional
+from arcparse import arcparser, option, positional
 
 
 @pytest.mark.parametrize(
@@ -12,7 +12,8 @@ from arcparse import ArcParser, option, positional
     ],
 )
 def test_opt_nargs(string: str, result: list[int]) -> None:
-    class Args(ArcParser):
+    @arcparser
+    class Args:
         values: list[int]
 
     args = Args.parse(string.split())
@@ -27,7 +28,8 @@ def test_opt_nargs(string: str, result: list[int]) -> None:
     ],
 )
 def test_pos_nargs(string: str, result: list[int]) -> None:
-    class Args(ArcParser):
+    @arcparser
+    class Args:
         values: list[int] = positional()
 
     args = Args.parse(string.split())
@@ -44,7 +46,8 @@ def test_pos_nargs(string: str, result: list[int]) -> None:
     ],
 )
 def test_opt_nargs_plus(string: str, result: list[int] | None) -> None:
-    class Args(ArcParser):
+    @arcparser
+    class Args:
         values: list[int] = option(at_least_one=True)
 
     if result is None:
@@ -64,7 +67,8 @@ def test_opt_nargs_plus(string: str, result: list[int] | None) -> None:
     ],
 )
 def test_pos_nargs_plus(string: str, result: list[int] | None) -> None:
-    class Args(ArcParser):
+    @arcparser
+    class Args:
         values: list[int] = positional(at_least_one=True)
 
     if result is None:
@@ -84,7 +88,8 @@ def test_pos_nargs_plus(string: str, result: list[int] | None) -> None:
     ],
 )
 def test_opt_append(string: str, result: list[int]) -> None:
-    class Args(ArcParser):
+    @arcparser
+    class Args:
         values: list[int] = option("-v", append=True, name_override="value")
 
     args = Args.parse(string.split())

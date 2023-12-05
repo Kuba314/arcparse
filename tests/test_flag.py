@@ -2,10 +2,11 @@ from typing import Any
 
 import pytest
 
-from arcparse import ArcParser, flag, no_flag
+from arcparse import arcparser, flag, no_flag
 
 
-class Args(ArcParser):
+@arcparser
+class Args:
     foo: bool
     bar: bool = no_flag()
     baz: bool = flag(short="-z")

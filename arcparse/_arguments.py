@@ -1,15 +1,15 @@
 from abc import ABC, abstractmethod
-from argparse import ArgumentParser, _ActionsContainer
+from argparse import _ActionsContainer
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, Literal, overload
 
-from .converters import itemwise
-from .typehints import (
+from ._typehints import (
     extract_collection_type,
     extract_optional_type,
     extract_type_from_typehint,
 )
+from .converters import itemwise
 
 
 class Void:
@@ -18,39 +18,30 @@ class Void:
 void = Void()
 
 
+@dataclass(kw_only=True, eq=False)
 class MxGroup:
-    def __init__(self, *, required: bool = False):
-        self.required = required
-
-    def apply(self, parser: ArgumentParser, arguments_by_name: list[tuple[str, "_BaseArgument"]]):
-        group = parser.add_mutually_exclusive_group(required=self.required)
-        for name, argument in arguments_by_name:
-            argument.apply(group, name)
+    required: bool = False
 
 
 @dataclass(kw_only=True)
 class _BaseArgument(ABC):
     mx_group: MxGroup | None = None
     help: str | None = None
-    typehint: type = field(init=False, default=Void)
 
-    def apply(self, actions_container: _ActionsContainer, name: str) -> None:
-        args = self.get_argparse_args(name)
-        kwargs = self.get_argparse_kwargs(name)
+    def apply(self, actions_container: _ActionsContainer, name: str, typehint: type) -> None:
+        args = self.get_argparse_args(name, typehint)
+        kwargs = self.get_argparse_kwargs(name, typehint)
         actions_container.add_argument(*args, **kwargs)
 
     @abstractmethod
-    def get_argparse_args(self, name: str) -> list[str]:
+    def get_argparse_args(self, name: str, typehint: type) -> list[str]:
         ...
 
-    def get_argparse_kwargs(self, name: str) -> dict[str, Any]:
+    def get_argparse_kwargs(self, name: str, typehint: type) -> dict[str, Any]:
         kwargs = {}
         if self.help is not None:
             kwargs["help"] = self.help
         return kwargs
-
-    def resolve_with_typehint(self, typehint: type) -> None:
-        self.typehint = typehint
 
 
 @dataclass(kw_only=True)
@@ -59,65 +50,58 @@ class _BaseValueArgument[T](_BaseArgument):
     choices: list[T] | None = None
     converter: Callable[[str], T] | None = None
     name_override: str | None = None
-    multiple: bool = False
     at_least_one: bool = False
-    type_requires_value: bool = False
 
-    def get_argparse_kwargs(self, name: str) -> dict[str, Any]:
-        kwargs = super().get_argparse_kwargs(name)
+    def need_multiple(self, typehint: type) -> bool:
+        return (
+            (self.converter is None and extract_collection_type(typehint) is not None)
+            or isinstance(self.converter, itemwise)
+        )
+
+    def get_argparse_kwargs(self, name: str, typehint: type) -> dict[str, Any]:
+        kwargs = super().get_argparse_kwargs(name, typehint)
+
+        if self.converter is None:
+            type_ = extract_type_from_typehint(typehint)
+            if type_ is not str:
+                if extract_collection_type(typehint):
+                    self.converter = itemwise(type_)  # type: ignore (list[T@itemwise] somehow incompatible with T@_BaseValueArgument)
+                else:
+                    self.converter = type_
+
         if self.converter is not None:
             kwargs["type"] = self.converter
         if self.default is not void:
             kwargs["default"] = self.default
         if self.choices is not None:
             kwargs["choices"] = self.choices
-        if self.multiple and not self.at_least_one:
-            if self.default is void:
-                kwargs["default"] = []
+
+        if self.need_multiple(typehint) and not self.at_least_one and self.default is void:
+            kwargs["default"] = []
 
         return kwargs
-
-    def resolve_with_typehint(self, typehint: type) -> None:
-        super().resolve_with_typehint(typehint)
-
-        # assume multiple arguments if no converter set and expected type is a collection
-        if (
-            (self.converter is None and extract_collection_type(typehint))
-            or (isinstance(self.converter, itemwise))
-        ):
-            self.multiple = True
-
-        if self.converter is None:
-            type_ = extract_type_from_typehint(typehint)
-            if type_ is bool:
-                raise Exception("Argument yielding a value can't be typed as `bool`")
-
-            if type_ is not str:
-                self.converter = type_
 
 
 @dataclass
 class _Positional[T](_BaseValueArgument[T]):
-    def get_argparse_args(self, name: str) -> list[str]:
+    def get_argparse_args(self, name: str, typehint: type) -> list[str]:
         if self.name_override is not None:
             return [self.name_override]
         return [name]
 
-    def get_argparse_kwargs(self, name: str) -> dict[str, Any]:
-        kwargs = super().get_argparse_kwargs(name)
-        if self.multiple:
+    def get_argparse_kwargs(self, name: str, typehint: type) -> dict[str, Any]:
+        kwargs = super().get_argparse_kwargs(name, typehint)
+
+        type_is_optional = bool(extract_optional_type(typehint))
+        type_is_collection = bool(extract_collection_type(typehint))
+        optional = type_is_optional or type_is_collection or self.default is not void
+
+        if self.need_multiple(typehint):
             kwargs["nargs"] = "+" if self.at_least_one else "*"
             kwargs["metavar"] = name.upper()
-        elif not self.type_requires_value or self.default is not void:
+        elif optional:
             kwargs["nargs"] = "?"
         return kwargs
-
-    def resolve_with_typehint(self, typehint: type) -> None:
-        super().resolve_with_typehint(typehint)
-        is_optional = bool(extract_optional_type(typehint))
-        is_collection = bool(extract_collection_type(typehint))
-        if is_optional or is_collection:
-            self.type_requires_value = False
 
 
 @dataclass
@@ -126,7 +110,7 @@ class _Option[T](_BaseValueArgument[T]):
     short_only: bool = False
     append: bool = False
 
-    def get_argparse_args(self, name: str) -> list[str]:
+    def get_argparse_args(self, name: str, typehint: type) -> list[str]:
         name = self.name_override if self.name_override is not None else name.replace("_", "-")
         args = [f"--{name}"]
         if self.short_only:
@@ -137,9 +121,9 @@ class _Option[T](_BaseValueArgument[T]):
 
         return args
 
-    def get_argparse_kwargs(self, name: str) -> dict[str, Any]:
-        kwargs = super().get_argparse_kwargs(name)
-        if self.multiple:
+    def get_argparse_kwargs(self, name: str, typehint: type) -> dict[str, Any]:
+        kwargs = super().get_argparse_kwargs(name, typehint)
+        if self.need_multiple(typehint):
             if self.append:
                 kwargs["action"] = "append"
             else:
@@ -151,17 +135,13 @@ class _Option[T](_BaseValueArgument[T]):
         elif self.short_only:
             kwargs["dest"] = name
 
-        if self.default is void and (self.type_requires_value or self.at_least_one):
+        type_is_optional = bool(extract_optional_type(typehint))
+        type_is_collection = bool(extract_collection_type(typehint))
+        required = (not (type_is_optional or type_is_collection) and self.default is void) or self.at_least_one
+        if required:
             kwargs["required"] = True
 
         return kwargs
-
-    def resolve_with_typehint(self, typehint: type) -> None:
-        super().resolve_with_typehint(typehint)
-        is_optional = bool(extract_optional_type(typehint))
-        is_collection = bool(extract_collection_type(typehint))
-        if not is_optional and not is_collection:
-            self.type_requires_value = True
 
 
 @dataclass
@@ -169,7 +149,7 @@ class _Flag(_BaseArgument):
     short: str | None = None
     short_only: bool = False
 
-    def get_argparse_args(self, name: str) -> list[str]:
+    def get_argparse_args(self, name: str, typehint: type) -> list[str]:
         args = [f"--{name.replace("_", "-")}"]
         if self.short_only:
             assert self.short is not None
@@ -179,8 +159,8 @@ class _Flag(_BaseArgument):
 
         return args
 
-    def get_argparse_kwargs(self, name: str) -> dict[str, Any]:
-        kwargs = super().get_argparse_kwargs(name)
+    def get_argparse_kwargs(self, name: str, typehint: type) -> dict[str, Any]:
+        kwargs = super().get_argparse_kwargs(name, typehint)
         kwargs["action"] = "store_true"
 
         if self.short_only:
@@ -190,11 +170,11 @@ class _Flag(_BaseArgument):
 
 @dataclass
 class _NoFlag(_BaseArgument):
-    def get_argparse_args(self, name: str) -> list[str]:
+    def get_argparse_args(self, name: str, typehint: type) -> list[str]:
         return [f"--no-{name.replace("_", "-")}"]
 
-    def get_argparse_kwargs(self, name: str) -> dict[str, Any]:
-        kwargs = super().get_argparse_kwargs(name)
+    def get_argparse_kwargs(self, name: str, typehint: type) -> dict[str, Any]:
+        kwargs = super().get_argparse_kwargs(name, typehint)
         kwargs["action"] = "store_false"
 
         kwargs["dest"] = name
@@ -240,7 +220,6 @@ def positional(  # type: ignore
         choices=choices,
         converter=converter,
         name_override=name_override,
-        type_requires_value=True,
         at_least_one=at_least_one,
         mx_group=mx_group,
         help=help,
@@ -315,7 +294,6 @@ def option(  # type: ignore
         choices=choices,
         converter=converter,
         name_override=name_override,
-        type_requires_value=False,
         append=append,
         at_least_one=at_least_one,
         mx_group=mx_group,

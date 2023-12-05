@@ -1,8 +1,5 @@
 from types import NoneType, UnionType
-from typing import TYPE_CHECKING, Optional, Union, get_args, get_origin
-
-if TYPE_CHECKING:
-    from .parser import ArcParser
+from typing import Optional, Union, get_args, get_origin
 
 
 def extract_optional_type(typehint: type) -> type | None:
@@ -26,7 +23,7 @@ def extract_collection_type(typehint: type) -> type | None:
     return None
 
 
-def extract_subparsers_from_typehint(typehint: type) -> list[type["ArcParser"]] | None:
+def extract_subparsers_from_typehint(typehint: type) -> list[type] | None:
     origin = get_origin(typehint)
     if origin in {Union, UnionType}:
         return list(get_args(typehint))

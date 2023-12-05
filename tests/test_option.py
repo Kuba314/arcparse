@@ -2,10 +2,11 @@ from typing import Any, Optional
 
 import pytest
 
-from arcparse import ArcParser, option
+from arcparse import arcparser, option
 
 
-class Args(ArcParser):
+@arcparser
+class Args:
     foo: str = option("-f")
     bar: None | str
     baz: str = option("-z", short_only=True, default="123")
