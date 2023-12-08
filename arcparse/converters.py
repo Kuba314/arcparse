@@ -17,8 +17,24 @@ class itemwise[T]:
         return self._converter(string)  # type: ignore
 
 
-def csv[T](type_: type[T] = str, /) -> Callable[[str], list[T]]:
+def sv[T](separator: str, type_: type[T] = str, /) -> Callable[[str], list[T]]:
     def conv(arg: str) -> list[T]:
-        return list(map(type_, arg.split(",")))
+        return list(map(type_, arg.split(separator)))
+
+    return conv
+
+
+def csv[T](type_: type[T] = str, /) -> Callable[[str], list[T]]:
+    return sv(",", type_)
+
+
+def sv_dict[K, V](item_separator: str, key_value_separator: str, *, key_type: type[K] = str, value_type: type[V] = str) -> Callable[[str], dict[K, V]]:
+    def conv(arg: str) -> dict[K, V]:
+        items = arg.split(item_separator)
+        d = {}
+        for item in items:
+            k, v = item.split(key_value_separator)
+            d[key_type(k)] = value_type(v)
+        return d
 
     return conv

@@ -1,7 +1,8 @@
 from enum import StrEnum, auto
+
 import pytest
 
-from arcparse import ArcParser, option, itemwise
+from arcparse import ArcParser, itemwise, option
 from arcparse.converters import csv
 
 

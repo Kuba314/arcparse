@@ -1,16 +1,30 @@
 from __future__ import annotations
+
 from argparse import ArgumentParser
-from dataclasses import make_dataclass
 from collections.abc import Sequence
+from dataclasses import make_dataclass
 from enum import StrEnum
 from types import NoneType, UnionType
 from typing import Any, Self, Union, get_args, get_origin
 import inspect
+import re
 
-from .arguments import _Option, _BaseValueArgument, _Flag, _BaseArgument, void
-from .subparser import _Subparsers
-from .typehints import extract_collection_type, extract_subparsers_from_typehint, extract_type_from_typehint
+from .arguments import (
+    MxGroup,
+    _BaseArgument,
+    _BaseValueArgument,
+    _Flag,
+    _Option,
+    _ValueOverride,
+    void,
+)
 from .converters import itemwise
+from .subparser import _Subparsers
+from .typehints import (
+    extract_collection_type,
+    extract_subparsers_from_typehint,
+    extract_type_from_typehint,
+)
 
 
 def _to_bool(value: str) -> bool:
@@ -33,10 +47,10 @@ class ArcParser(metaclass=_InstanceCheckMeta):
     @classmethod
     def parse(cls, args: Sequence[str] | None = None, defaults: dict[str, Any] = {}) -> Self:
         parser = ArgumentParser()
-        cls._apply(parser, defaults=defaults)
+        already_resolved = cls._apply(parser, defaults=defaults)
         parsed = parser.parse_args(args)
 
-        return cls.from_dict(parsed.__dict__)
+        return cls.from_dict(already_resolved | parsed.__dict__)
 
     @classmethod
     def from_dict(cls, dict: dict[str, Any]) -> Self:
@@ -64,17 +78,33 @@ class ArcParser(metaclass=_InstanceCheckMeta):
         return dto_cls(**values)
 
     @classmethod
-    def _apply(cls, parser: ArgumentParser, defaults: dict[str, Any] = {}) -> None:
+    def _apply(cls, parser: ArgumentParser, defaults: dict[str, Any] = {}) -> dict[str, Any]:
+        """Apply arguments and defaults to ArgumentParser returning already resolved values"""
         arguments = cls.__collect_arguments()
 
         cls.__apply_argument_defaults(arguments, defaults)
 
+        args_by_mx_group: dict[MxGroup, list[tuple[str, _BaseArgument]]] = {}
         for name, arg in arguments.items():
-            arg.apply(parser, name)
+            if arg.mx_group is None:
+                arg.apply(parser, name)
+            else:
+                args_by_mx_group.setdefault(arg.mx_group, []).append((name, arg))
+
+        for group, args_by_name in args_by_mx_group.items():
+            group.apply(parser, args_by_name)
+
 
         if subparsers_triple := cls.__collect_subparsers():
             name, subparsers, subparser_types = subparsers_triple
             subparsers.apply(parser, name, subparser_types, defaults=defaults)
+
+        return {
+            name: arg.value_override
+            for name, arg in arguments.items()
+            if isinstance(arg, _ValueOverride) and arg.value_override is not void
+        }
+
 
     @classmethod
     def __collect_arguments(cls) -> dict[str, _BaseArgument]:
@@ -90,8 +120,11 @@ class ArcParser(metaclass=_InstanceCheckMeta):
             if callable(value) or isinstance(value, property) or (key.startswith("__") and key.endswith("__")):
                 continue
 
+            # ignore untyped class variables
             if key not in all_params:
-                raise Exception(f"Argument {key} is missing a type-hint")
+                if isinstance(value, _BaseArgument):
+                    raise Exception(f"Argument {key} is missing a type-hint and would be ignored")
+                continue
 
             typehint, _ = all_params[key]
             all_params[key] = (typehint, value)
@@ -142,6 +175,8 @@ class ArcParser(metaclass=_InstanceCheckMeta):
         actual_type = extract_type_from_typehint(typehint)
         if actual_type is bool:
             raise Exception(f"Can't construct argument with inner type bool, conversion would be always True")
+        elif getattr(actual_type, "_is_protocol", False):
+            raise Exception("Argument with no converter can't be typed as a Protocol subclass")
 
         if type_ := extract_collection_type(typehint):
             converter = itemwise(type_)
@@ -150,6 +185,8 @@ class ArcParser(metaclass=_InstanceCheckMeta):
 
         if issubclass(actual_type, StrEnum):
             return _Option(default=default, choices=list(actual_type), converter=converter)
+        elif actual_type == re.Pattern:
+            return _Option(default=default, converter=re.compile)
 
         return _Option(default=default, converter=converter if actual_type is not str else None)
 
@@ -160,6 +197,10 @@ class ArcParser(metaclass=_InstanceCheckMeta):
                 raise Exception("Unknown param provided")
 
             arg = arguments[name]
+            if isinstance(arg, _ValueOverride):
+                arg.value_override = default
+                continue
+
             if not isinstance(arg, _BaseValueArgument):
                 raise Exception(f"Argument \"{name}\" is not a value argument, can't set its default")
 
@@ -169,6 +210,8 @@ class ArcParser(metaclass=_InstanceCheckMeta):
             else:
                 converter = arg.converter or desired_type
 
-                if not isinstance(default, desired_type):
+                # only check whether the default is the correct type when the type supports isinstance checks
+                is_runtime_checkable = not getattr(desired_type, "_is_protocol", False) or getattr(desired_type, "_is_runtime_protocol", False)
+                if is_runtime_checkable and not isinstance(default, desired_type):
                     default = converter(default)
                 arg.default = default

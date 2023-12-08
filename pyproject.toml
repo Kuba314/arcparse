@@ -24,6 +24,11 @@ python = "^3.12"
 black = "^23.11.0"
 pyright = "^1.1.335"
 pytest = "^7.4.3"
+isort = "^5.12.0"
+
+[tool.isort]
+profile = "black"
+from_first = "true"
 
 [build-system]
 requires = ["poetry-core"]

@@ -1,7 +1,8 @@
 from typing import Any
+
 import pytest
 
-from arcparse import ArcParser, positional, option, flag, no_flag
+from arcparse import ArcParser, flag, no_flag, option, positional
 
 
 class OptArgs(ArcParser):

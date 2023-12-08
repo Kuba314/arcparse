@@ -1,5 +1,5 @@
-from typing import Optional, Union, get_args, get_origin, TYPE_CHECKING
 from types import NoneType, UnionType
+from typing import TYPE_CHECKING, Optional, Union, get_args, get_origin
 
 if TYPE_CHECKING:
     from .parser import ArcParser

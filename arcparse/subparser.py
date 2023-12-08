@@ -2,7 +2,7 @@ from argparse import ArgumentParser
 from collections.abc import Sequence
 from dataclasses import dataclass
 from types import NoneType
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from .parser import ArcParser
