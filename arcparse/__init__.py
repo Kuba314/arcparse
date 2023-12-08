@@ -1,7 +1,7 @@
-from .parser import ArcParser
-from .arguments import flag, no_flag, option, positional, MxGroup
-from .subparser import subparsers
+from .arguments import MxGroup, flag, no_flag, option, positional
 from .converters import itemwise
+from .parser import ArcParser
+from .subparser import subparsers
 
 __all__ = [
     "ArcParser",

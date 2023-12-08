@@ -1,7 +1,8 @@
 from typing import Any
+
 import pytest
 
-from arcparse import ArcParser, MxGroup, option, flag
+from arcparse import ArcParser, MxGroup, flag, option
 
 
 def test_group_as_untyped_attribute() -> None:

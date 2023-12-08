@@ -1,4 +1,5 @@
 from typing import Any
+
 import pytest
 
 from arcparse import ArcParser, flag, no_flag

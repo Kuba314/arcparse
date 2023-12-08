@@ -1,6 +1,6 @@
 from enum import StrEnum, auto
-import re
 from typing import Any, Optional
+import re
 
 import pytest
 

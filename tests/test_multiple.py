@@ -1,6 +1,6 @@
 import pytest
 
-from arcparse import ArcParser, positional, option
+from arcparse import ArcParser, option, positional
 
 
 @pytest.mark.parametrize(

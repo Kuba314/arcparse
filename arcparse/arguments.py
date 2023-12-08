@@ -2,11 +2,15 @@ from abc import ABC, abstractmethod
 from argparse import ArgumentParser, _ActionsContainer
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from collections.abc import Callable
 from typing import Any, Literal, overload
 
 from .converters import itemwise
-from .typehints import extract_collection_type, extract_optional_type, extract_type_from_typehint
+from .typehints import (
+    extract_collection_type,
+    extract_optional_type,
+    extract_type_from_typehint,
+)
+
 
 class Void:
     pass
