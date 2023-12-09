@@ -35,10 +35,6 @@ class _BaseArgument(ABC):
     typehint: type = field(init=False, default=Void)
 
     def apply(self, actions_container: _ActionsContainer, name: str) -> None:
-        # value is overriden, do not add argument
-        if isinstance(self, _ValueOverride) and self.value_override is not void:
-            return
-
         args = self.get_argparse_args(name)
         kwargs = self.get_argparse_kwargs(name)
         actions_container.add_argument(*args, **kwargs)
@@ -168,20 +164,8 @@ class _Option[T](_BaseValueArgument[T]):
             self.type_requires_value = True
 
 
-@dataclass(kw_only=True)
-class _ValueOverride[T]:
-    """Value override for arguments
-
-    Utilized in flags and no_flags when providing dynamic defaults for them.
-    Setting a non-void `value_override` causes the argument to not be included
-    into ArgumentParser and the value will be always contained in the return
-    arguments.
-    """
-    value_override: T | Void = void
-
-
 @dataclass
-class _Flag(_ValueOverride[bool], _BaseArgument):
+class _Flag(_BaseArgument):
     short: str | None = None
     short_only: bool = False
 
@@ -205,7 +189,7 @@ class _Flag(_ValueOverride[bool], _BaseArgument):
 
 
 @dataclass
-class _NoFlag(_ValueOverride[bool], _BaseArgument):
+class _NoFlag(_BaseArgument):
     def get_argparse_args(self, name: str) -> list[str]:
         return [f"--no-{name.replace("_", "-")}"]
 

@@ -1,5 +1,5 @@
 # Arcparse
-Declare program arguments declaratively and type-safely. Optionally set argument defaults dynamically (see [Dynamic argument defaults](#dynamic-argument-defaults)).
+Declare program arguments declaratively and type-safely.
 
 This project provides a wrapper around `argparse`. It adds type-safety and allows for more expressive argument parser definitions.
 
@@ -151,9 +151,6 @@ elif isinstance(bar := args.action, BarArgs):
     print(f"bar {bar.arg2}")
 ```
 Be aware that even though the `isinstance()` check passes, the instantiated subparser objects are never actual instances of their class because a dynamically created `dataclass` is used instead. The `isinstance()` relation is faked using a metaclass overriding `__instancecheck__()`.
-
-## Dynamic argument defaults
-The `parse()` classmethod supports an optional dictionary of defaults, which replace the statically defined defaults before parsing arguments. This might be useful for saving some arguments in a config file allowing the user to provide only the ones that are not present in the config.
 
 ## Credits
 This project was inspired by [swansonk14/typed-argument-parser](https://github.com/swansonk14/typed-argument-parser).

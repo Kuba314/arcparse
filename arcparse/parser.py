@@ -9,15 +9,7 @@ from typing import Any, Self, Union, get_args, get_origin
 import inspect
 import re
 
-from .arguments import (
-    MxGroup,
-    _BaseArgument,
-    _BaseValueArgument,
-    _Flag,
-    _Option,
-    _ValueOverride,
-    void,
-)
+from .arguments import MxGroup, _BaseArgument, _BaseValueArgument, _Flag, _Option, void
 from .converters import itemwise
 from .subparser import _Subparsers
 from .typehints import (
@@ -25,15 +17,6 @@ from .typehints import (
     extract_subparsers_from_typehint,
     extract_type_from_typehint,
 )
-
-
-def _to_bool(value: str) -> bool:
-    if value == "true":
-        return True
-    elif value == "false":
-        return False
-    else:
-        raise Exception(f'Could not parse bool from "{value}"')
 
 
 class _InstanceCheckMeta(type):
@@ -45,12 +28,12 @@ class _InstanceCheckMeta(type):
 class ArcParser(metaclass=_InstanceCheckMeta):
     """Use _InstanceCheckMeta to allow for type-narrowing of subparser objects"""
     @classmethod
-    def parse(cls, args: Sequence[str] | None = None, defaults: dict[str, Any] = {}) -> Self:
+    def parse(cls, args: Sequence[str] | None = None) -> Self:
         parser = ArgumentParser()
-        already_resolved = cls._apply(parser, defaults=defaults)
+        cls._apply(parser)
         parsed = parser.parse_args(args)
 
-        return cls.from_dict(already_resolved | parsed.__dict__)
+        return cls.from_dict(parsed.__dict__)
 
     @classmethod
     def from_dict(cls, dict: dict[str, Any]) -> Self:
@@ -78,11 +61,9 @@ class ArcParser(metaclass=_InstanceCheckMeta):
         return dto_cls(**values)
 
     @classmethod
-    def _apply(cls, parser: ArgumentParser, defaults: dict[str, Any] = {}) -> dict[str, Any]:
-        """Apply arguments and defaults to ArgumentParser returning already resolved values"""
+    def _apply(cls, parser: ArgumentParser) -> None:
+        """Apply arguments to ArgumentParser"""
         arguments = cls.__collect_arguments()
-
-        cls.__apply_argument_defaults(arguments, defaults)
 
         args_by_mx_group: dict[MxGroup, list[tuple[str, _BaseArgument]]] = {}
         for name, arg in arguments.items():
@@ -97,14 +78,7 @@ class ArcParser(metaclass=_InstanceCheckMeta):
 
         if subparsers_triple := cls.__collect_subparsers():
             name, subparsers, subparser_types = subparsers_triple
-            subparsers.apply(parser, name, subparser_types, defaults=defaults)
-
-        return {
-            name: arg.value_override
-            for name, arg in arguments.items()
-            if isinstance(arg, _ValueOverride) and arg.value_override is not void
-        }
-
+            subparsers.apply(parser, name, subparser_types)
 
     @classmethod
     def __collect_arguments(cls) -> dict[str, _BaseArgument]:
@@ -189,29 +163,3 @@ class ArcParser(metaclass=_InstanceCheckMeta):
             return _Option(default=default, converter=re.compile)
 
         return _Option(default=default, converter=converter if actual_type is not str else None)
-
-    @staticmethod
-    def __apply_argument_defaults(arguments: dict[str, _BaseArgument], defaults: dict[str, Any]) -> None:
-        for name, default in defaults.items():
-            if name not in arguments:
-                raise Exception("Unknown param provided")
-
-            arg = arguments[name]
-            if isinstance(arg, _ValueOverride):
-                arg.value_override = default
-                continue
-
-            if not isinstance(arg, _BaseValueArgument):
-                raise Exception(f"Argument \"{name}\" is not a value argument, can't set its default")
-
-            desired_type = extract_type_from_typehint(arg.typehint)
-            if desired_type is bool:
-                arg.default = _to_bool(default)
-            else:
-                converter = arg.converter or desired_type
-
-                # only check whether the default is the correct type when the type supports isinstance checks
-                is_runtime_checkable = not getattr(desired_type, "_is_protocol", False) or getattr(desired_type, "_is_runtime_protocol", False)
-                if is_runtime_checkable and not isinstance(default, desired_type):
-                    default = converter(default)
-                arg.default = default

@@ -17,7 +17,6 @@ class _Subparsers:
         parser: ArgumentParser,
         name: str,
         subparser_types: Sequence[type["ArcParser"] | None],
-        defaults: dict[str, Any] = {},
     ) -> None:
         subparsers_kwargs: dict = {"dest": name}
         if NoneType not in subparser_types:
@@ -30,7 +29,7 @@ class _Subparsers:
 
         for name, subparser_type in zip(self.names, nonnull_subparser_types):
             subparser = subparsers.add_parser(name)
-            subparser_type._apply(subparser, defaults.get("name", {}))
+            subparser_type._apply(subparser)
 
 
 def subparsers(*args: str) -> Any:

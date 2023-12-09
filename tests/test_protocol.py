@@ -60,11 +60,3 @@ def test_inh_protocol_with_converter_valid():
     args = Args.parse("--foo-bar foo,bar".split())
     assert args.foo_bar.foo == "foo"
     assert args.foo_bar.bar == "bar"
-
-
-def test_protocol_dynamic_defaults_valid():
-    class Args(ArcParser):
-        foo: FooLike = option(converter=FooBar.from_foo)
-
-    args = Args.parse([], defaults={"foo": "foo"})
-    assert args.foo.foo == "foo"
