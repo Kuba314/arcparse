@@ -9,7 +9,6 @@ Disclaimer: This library is young and probably highly unstable. Use at your own 
 ```py
 from arcparse import arcparser, positional
 
-
 @arcparser
 class Args:
     name: str = positional()
@@ -18,7 +17,7 @@ class Args:
     happy: bool
 
 
-args = Args.parse()
+args = Args.parse("Thomas 25 news coffee running --happy".split())
 print(f"Hi, my name is {args.name}!")
 ```
 
@@ -86,7 +85,8 @@ Passing `name_override=...` will cause the provided string to be used instead of
 
 This is useful in combination with accepting multiple values with `append=True`, because the user will use `--value foo --value bar`, while the code will use `args.values`.
 ```py
-class Args(ArcParser):
+@arcparser
+class Args:
     values: list[str] = option(name_override="value", append=True)
 ```
 
@@ -96,6 +96,7 @@ Automatic type conversions are supported. The type-hint is used in `type=...` in
 Custom converters may be used in combination with multiple values per argument. These converters are called `itemwise` and need to be wrapped in `itemwise()`. This wrapper is used automatically if an argument is typed as `list[...]` and no converter is set.
 ```py
 from arcparse.converters import sv, csv, sv_dict, itemwise
+from enum import StrEnum
 from re import Pattern
 
 @arcparser
@@ -132,11 +133,9 @@ class Args:
 ### Subparsers
 Type-hinting an argument as a union of ArcParser subclasses creates subparsers in the background. Assigning from `subparsers()` gives them names as they will be entered from the command-line. Subparsers are required by default. Adding `None` to the union makes the subparsers optional.
 ```py
-@arcparser
 class FooArgs:
     arg1: str
 
-@arcparser
 class BarArgs:
     arg2: int = positional()
 
@@ -155,7 +154,7 @@ python3 script.py foo --arg1 baz
 python3 script.py bar --arg2 123
 ```
 ```py
-args = Args.parse()
+args = Args.parse("foo --arg1 baz".split())
 if isinstance(foo := args.action, FooArgs):
     print(f"foo {foo.arg1}")
 elif isinstance(bar := args.action, BarArgs):
