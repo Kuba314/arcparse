@@ -2,11 +2,12 @@ from typing import Any
 
 import pytest
 
-from arcparse import ArcParser, MxGroup, flag, option
+from arcparse import MxGroup, arcparser, flag, option
 
 
 def test_group_as_untyped_attribute() -> None:
-    class Args(ArcParser):
+    @arcparser
+    class Args:
         group = MxGroup()
         foo: str | None = option(mx_group=group)
         bar: str | None = option(mx_group=group)
@@ -15,25 +16,26 @@ def test_group_as_untyped_attribute() -> None:
 
 
 def test_group_elements_both_nonoptional() -> None:
-    class Args(ArcParser):
+    class Args:
         foo: str = option(mx_group=(group := MxGroup()))
         bar: str = option(mx_group=group)
 
     # TODO: raise mx-arg-no-default instead of required-arguments error
     with pytest.raises(Exception):
-        Args.parse([])
+        arcparser(Args)
 
 
 def test_group_elements_some_nonoptional() -> None:
-    class Args(ArcParser):
+    class Args:
         foo: str = option(mx_group=(group := MxGroup()))
         bar: str | None = option(mx_group=group)
 
     with pytest.raises(Exception):
-        Args.parse([])
+        arcparser(Args)
 
 
-class Args(ArcParser):
+@arcparser
+class Args:
     foo: str | None = option(mx_group=(option_group := MxGroup()))
     bar: str | None = option(mx_group=option_group)
 

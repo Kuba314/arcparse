@@ -1,10 +1,10 @@
 from enum import StrEnum, auto
-from typing import Any, Optional
+from typing import Any
 import re
 
 import pytest
 
-from arcparse import ArcParser
+from arcparse import arcparser
 
 
 class Result(StrEnum):
@@ -12,7 +12,8 @@ class Result(StrEnum):
     FAIL = auto()
 
 
-class Args(ArcParser):
+@arcparser
+class Args:
     num: int | None
     result: Result | None
     regex: re.Pattern | None

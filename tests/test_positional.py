@@ -2,10 +2,11 @@ from typing import Any
 
 import pytest
 
-from arcparse import ArcParser, positional
+from arcparse import arcparser, positional
 
 
-class Args(ArcParser):
+@arcparser
+class Args:
     foo: str = positional()
     bar: str | None = positional()
     baz: str = positional(default="123")

@@ -2,10 +2,11 @@ from typing import Any
 
 import pytest
 
-from arcparse import ArcParser, flag, no_flag, option, positional
+from arcparse import arcparser, flag, no_flag, option, positional
 
 
-class OptArgs(ArcParser):
+@arcparser
+class OptArgs:
     optional_str: str | None
     optional_int: int | None
     optional_str_alt: str | None = option()
@@ -58,7 +59,8 @@ def test_defaults(arg_string: str, key: str, value: Any) -> None:
         assert getattr(parsed, k) == v
 
 
-class PosArgs(ArcParser):
+@arcparser
+class PosArgs:
     positional_str: str = positional()
     positional_int: int = positional()
     positional_default_str: str | None = positional()

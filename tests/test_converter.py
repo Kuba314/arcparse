@@ -2,7 +2,7 @@ from enum import StrEnum, auto
 
 import pytest
 
-from arcparse import ArcParser, itemwise, option
+from arcparse import arcparser, itemwise, option
 from arcparse.converters import csv
 
 
@@ -16,9 +16,10 @@ def test_itemwise() -> None:
             number = int(arg)
             return cls.PASS if number == 1 else cls.FAIL
 
-    class Args(ArcParser):
+    # @arcparser
+    class Xd:
         results: list[Result] = option(converter=itemwise(Result.from_int))
-
+    Args = arcparser(Xd)
     args = Args.parse("--results 0 1 0".split())
     assert isinstance(args.results, list)
     assert len(args.results) == 3
@@ -35,7 +36,8 @@ def test_itemwise() -> None:
     ],
 )
 def test_csv(string: str, attr: str, expected: list[str]) -> None:
-    class Args(ArcParser):
+    @arcparser
+    class Args:
         strings: list[str] = option(converter=csv())
         ints: list[int] = option(converter=csv(int))
 
