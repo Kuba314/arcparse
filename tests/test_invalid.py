@@ -1,36 +1,64 @@
 import pytest
 
 from arcparse import arcparser, positional
+from arcparse.errors import InvalidArgument, InvalidTypehint, MissingConverter
 
 
-class Invalid1:
-    x: bool | None
+def test_no_bool_inner_type_without_converter() -> None:
+    class Args:
+        x: bool | None
 
-class Invalid2:
-    x: bool = positional()
-
-class Invalid3:
-    x: int | str
-
-class Invalid4:
-    x: int | str | None
-
-class Invalid5:
-    x = positional()
-
-class Invalid6:
-    x: bool = True
-
-class Invalid7:
-    x: bool = False
-
-@pytest.mark.parametrize("args_shape", [Invalid1, Invalid2, Invalid3, Invalid4, Invalid5, Invalid6, Invalid7])
-def test_invalid(args_shape: type) -> None:
-    with pytest.raises(Exception):
-        arcparser(args_shape)
+    with pytest.raises(MissingConverter):
+        arcparser(Args)
 
 
-def test_untyped_variable() -> None:
+def test_no_bool_valued_type_without_converter() -> None:
+    class Args:
+        x: bool = positional()
+
+    with pytest.raises(InvalidTypehint):
+        arcparser(Args)
+
+
+def test_no_nonnone_union() -> None:
+    class Args:
+        x: int | str
+
+    with pytest.raises(InvalidTypehint):
+        arcparser(Args)
+
+
+def test_no_large_union_typehint() -> None:
+    class Args:
+        x: int | str | None
+
+    with pytest.raises(InvalidTypehint):
+        arcparser(Args)
+
+
+def test_no_typehint_invalid() -> None:
+    class Args:
+        x = positional()
+
+    with pytest.raises(InvalidTypehint):
+        arcparser(Args)
+
+
+def test_no_default_for_flag() -> None:
+    class ArgsTrue:
+        x: bool = True
+
+    class ArgsFalse:
+        x: bool = False
+
+    with pytest.raises(InvalidArgument):
+        arcparser(ArgsTrue)
+
+    with pytest.raises(InvalidArgument):
+        arcparser(ArgsFalse)
+
+
+def test_untyped_nonargument_variable_valid() -> None:
     @arcparser
     class Args:
         foo = 1

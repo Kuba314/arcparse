@@ -4,6 +4,7 @@ from typing import Protocol, Self
 import pytest
 
 from arcparse import arcparser, option
+from arcparse.errors import MissingConverter
 
 
 class FooLike(Protocol):
@@ -32,7 +33,7 @@ def test_protocol_no_converter_invalid():
     class Args:
         foo: FooLike
 
-    with pytest.raises(Exception):
+    with pytest.raises(MissingConverter):
         arcparser(Args)
 
 
@@ -40,7 +41,7 @@ def test_inh_protocol_no_converter_invalid():
     class Args:
         foo_bar: FooBarLike
 
-    with pytest.raises(Exception):
+    with pytest.raises(MissingConverter):
         arcparser(Args)
 
 

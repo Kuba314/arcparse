@@ -3,6 +3,7 @@ from typing import Any
 import pytest
 
 from arcparse import MxGroup, arcparser, flag, option
+from arcparse.errors import InvalidArgument
 
 
 def test_group_as_untyped_attribute() -> None:
@@ -20,8 +21,7 @@ def test_group_elements_both_nonoptional() -> None:
         foo: str = option(mx_group=(group := MxGroup()))
         bar: str = option(mx_group=group)
 
-    # TODO: raise mx-arg-no-default instead of required-arguments error
-    with pytest.raises(Exception):
+    with pytest.raises(InvalidArgument):
         arcparser(Args)
 
 
@@ -30,7 +30,7 @@ def test_group_elements_some_nonoptional() -> None:
         foo: str = option(mx_group=(group := MxGroup()))
         bar: str | None = option(mx_group=group)
 
-    with pytest.raises(Exception):
+    with pytest.raises(InvalidArgument):
         arcparser(Args)
 
 

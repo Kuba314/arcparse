@@ -4,6 +4,7 @@ from typing import Any
 import pytest
 
 from arcparse import arcparser, positional, subparsers
+from arcparse.errors import InvalidParser
 
 
 class FooArgs:
@@ -83,5 +84,5 @@ def test_only_one_subparsers() -> None:
         foo_or_bar: Foo | Bar = subparsers("foo", "bar")
         baz_or_boo: Baz | Boo = subparsers("baz", "boo")
 
-    with pytest.raises(Exception):
+    with pytest.raises(InvalidParser):
         arcparser(Args)

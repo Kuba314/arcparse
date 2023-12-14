@@ -17,6 +17,8 @@ from ._typehints import (
     extract_type_from_typehint,
 )
 from .converters import itemwise
+from .errors import InvalidArgument, InvalidParser, InvalidTypehint, MissingConverter
+
 
 type NameTypeArg[TArg: "_BaseArgument | _Subparsers"] = tuple[str, type, TArg]
 
@@ -48,7 +50,7 @@ def _collect_arguments(cls: type) -> list[NameTypeArg[_BaseArgument]]:
         # ignore untyped class variables un
         if key not in all_params:
             if isinstance(value, _BaseArgument):
-                raise Exception(f"Argument {key} is missing a type-hint and would be ignored")
+                raise InvalidTypehint(f"Argument {key} is missing a type-hint and would be ignored")
             continue
 
         typehint, _ = all_params[key]
@@ -63,7 +65,7 @@ def _collect_arguments(cls: type) -> list[NameTypeArg[_BaseArgument]]:
         if get_origin(typehint) in {Union, UnionType}:
             union_args = get_args(typehint)
             if len(union_args) > 2 or NoneType not in union_args:
-                raise Exception("Union can be used only for optional arguments (length of 2, 1 of them being None)")
+                raise InvalidTypehint("Union can be used only for optional arguments (length of 2, 1 of them being None)")
 
         if isinstance(value, _BaseArgument):
             argument = value
@@ -78,14 +80,14 @@ def _collect_arguments(cls: type) -> list[NameTypeArg[_BaseArgument]]:
 def _construct_argument(typehint: type, default: Any) -> _BaseArgument:
     if typehint is bool:
         if default is not void:
-            raise Exception("defaults don't make sense for flags")
+            raise InvalidArgument("defaults don't make sense for flags")
         return _Flag()
 
     actual_type = extract_type_from_typehint(typehint)
     if actual_type is bool:
-        raise Exception("Can't construct argument with inner type bool, conversion would be always True")
+        raise MissingConverter("Can't construct argument with inner type bool, conversion would be always True")
     elif getattr(actual_type, "_is_protocol", False):
-        raise Exception("Argument with no converter can't be typed as a Protocol subclass")
+        raise MissingConverter("Argument with no converter can't be typed as a Protocol subclass")
 
     if type_ := extract_collection_type(typehint):
         converter = itemwise(type_)
@@ -102,10 +104,10 @@ def _construct_argument(typehint: type, default: Any) -> _BaseArgument:
 
 def _check_argument_sanity(name: str, typehint: type, arg: _BaseArgument) -> None:
     if isinstance(arg, _BaseValueArgument) and extract_type_from_typehint(typehint) is bool and arg.converter is None:
-        raise Exception(f"Argument \"{name}\" yielding a value can't be typed as `bool`")
+        raise InvalidTypehint(f"Argument \"{name}\" yielding a value can't be typed as `bool`")
 
     if arg.mx_group is not None and isinstance(arg, _BaseValueArgument) and extract_optional_type(typehint) is None and arg.default is void:
-        raise Exception(f"Argument \"{name}\" in mutually exclusive group has to have a default")
+        raise InvalidArgument(f"Argument \"{name}\" in mutually exclusive group has to have a default")
 
 
 def _collect_subparsers(cls: type) -> NameTypeArg[_Subparsers] | None:
@@ -114,14 +116,14 @@ def _collect_subparsers(cls: type) -> NameTypeArg[_Subparsers] | None:
         return None
 
     elif len(all_subparsers) > 1:
-        raise Exception(f"Multiple subparsers definitions found on {cls}")
+        raise InvalidParser(f"Multiple subparsers definitions found on {cls}")
 
     name, subparsers = all_subparsers[0]
     if not (typehint := inspect.get_annotations(cls, eval_str=True)[name]):
-        raise Exception("subparsers have to be type-hinted")
+        raise InvalidTypehint("subparsers have to be type-hinted")
 
     if not extract_subparsers_from_typehint(typehint):
-        raise Exception(f"Unable to extract subparser types from {typehint}, expected a non-empty union of ArcParser types")
+        raise InvalidTypehint(f"Unable to extract subparser types from {typehint}, expected a non-empty union of ArcParser types")
 
     return (name, typehint, subparsers)
 
@@ -137,7 +139,7 @@ class _Subparsers:
         typehint: type,
     ) -> None:
         if not (subparser_types := extract_subparsers_from_typehint(typehint)):
-            raise Exception(f"Unable to extract subparser types from {typehint}, expected a non-empty union of ArcParser types")
+            raise InvalidTypehint(f"Unable to extract subparser types from {typehint}, expected a non-empty union of ArcParser types")
 
         subparsers_kwargs: dict = {"dest": name}
         if NoneType not in subparser_types:
