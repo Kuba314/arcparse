@@ -12,6 +12,7 @@ import re
 from ._arguments import MxGroup, _BaseArgument, _BaseValueArgument, _Flag, _Option, void
 from ._typehints import (
     extract_collection_type,
+    extract_literal_strings,
     extract_optional_type,
     extract_subparsers_from_typehint,
     extract_type_from_typehint,
@@ -94,7 +95,9 @@ def _construct_argument(typehint: type, default: Any) -> _BaseArgument:
     else:
         converter = actual_type
 
-    if issubclass(actual_type, StrEnum):
+    if choices := extract_literal_strings(actual_type):
+        return _Option(default=default, choices=choices)
+    elif issubclass(actual_type, StrEnum):
         return _Option(default=default, choices=list(actual_type), converter=converter)
     elif actual_type == re.Pattern:
         return _Option(default=default, converter=re.compile)

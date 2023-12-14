@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from argparse import _ActionsContainer
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Literal, overload
+from typing import Any, Literal, get_origin, overload
 
 from ._typehints import (
     extract_collection_type,
@@ -63,7 +63,7 @@ class _BaseValueArgument[T](_BaseArgument):
 
         if self.converter is None:
             type_ = extract_type_from_typehint(typehint)
-            if type_ is not str:
+            if type_ is not str and get_origin(type_) != Literal:
                 if extract_collection_type(typehint):
                     self.converter = itemwise(type_)  # type: ignore (list[T@itemwise] somehow incompatible with T@_BaseValueArgument)
                 else:
