@@ -31,8 +31,4 @@ def test_python_codeblock_functional(code: str, tmp_path: Path) -> None:
     path = tmp_path / "code.py"
     path.write_text(code)
 
-    # try:
     subprocess.check_call(["python3", str(path)])
-    # runpy.run_path(str(tmp_path))
-    # except BaseException as e:
-    #     raise Exception(code) from e
