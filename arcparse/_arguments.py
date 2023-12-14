@@ -85,8 +85,6 @@ class _BaseValueArgument[T](_BaseArgument):
 @dataclass
 class _Positional[T](_BaseValueArgument[T]):
     def get_argparse_args(self, name: str, typehint: type) -> list[str]:
-        if self.name_override is not None:
-            return [self.name_override]
         return [name]
 
     def get_argparse_kwargs(self, name: str, typehint: type) -> dict[str, Any]:
@@ -96,9 +94,12 @@ class _Positional[T](_BaseValueArgument[T]):
         type_is_collection = bool(extract_collection_type(typehint))
         optional = type_is_optional or type_is_collection or self.default is not void
 
+        if self.name_override is not None:
+            kwargs["metavar"] = self.name_override
+
         if self.need_multiple(typehint):
             kwargs["nargs"] = "+" if self.at_least_one else "*"
-            kwargs["metavar"] = name.upper()
+            kwargs["metavar"] = self.name_override if self.name_override is not None else name.upper()
         elif optional:
             kwargs["nargs"] = "?"
         return kwargs
