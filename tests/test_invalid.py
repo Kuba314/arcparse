@@ -1,14 +1,14 @@
 import pytest
 
 from arcparse import arcparser, positional
-from arcparse.errors import InvalidArgument, InvalidTypehint, MissingConverter
+from arcparse.errors import InvalidArgument, InvalidTypehint
 
 
 def test_no_bool_inner_type_without_converter() -> None:
     class Args:
         x: bool | None
 
-    with pytest.raises(MissingConverter):
+    with pytest.raises(InvalidTypehint):
         arcparser(Args)
 
 

@@ -1,11 +1,5 @@
-from ._arguments import MxGroup, flag, no_flag, option, positional
-from ._parser import (
-    InvalidArgument,
-    InvalidParser,
-    InvalidTypehint,
-    arcparser,
-    subparsers,
-)
+from ._argument_helpers import flag, mx_group, no_flag, option, positional, subparsers
+from ._parser import InvalidArgument, InvalidParser, InvalidTypehint, arcparser
 from .converters import itemwise
 
 
@@ -15,7 +9,7 @@ __all__ = [
     "option",
     "flag",
     "no_flag",
-    "MxGroup",
+    "mx_group",
     "subparsers",
     "itemwise",
     "InvalidParser",

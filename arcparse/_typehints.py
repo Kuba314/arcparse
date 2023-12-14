@@ -1,6 +1,8 @@
 from types import NoneType, UnionType
 from typing import Literal, Optional, Union, get_args, get_origin
 
+from arcparse.errors import InvalidTypehint
+
 
 def extract_optional_type(typehint: type) -> type | None:
     origin = get_origin(typehint)
@@ -23,11 +25,11 @@ def extract_collection_type(typehint: type) -> type | None:
     return None
 
 
-def extract_subparsers_from_typehint(typehint: type) -> list[type] | None:
+def extract_subparsers_from_typehint(typehint: type) -> list[type]:
     origin = get_origin(typehint)
     if origin in {Union, UnionType}:
         return list(get_args(typehint))
-    return None
+    raise InvalidTypehint(f"Unable to extract subparser types from {typehint}, expected a non-empty union of ArcParser types")
 
 
 def extract_type_from_typehint(typehint: type) -> type:

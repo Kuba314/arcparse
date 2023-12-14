@@ -2,14 +2,14 @@ from typing import Any
 
 import pytest
 
-from arcparse import MxGroup, arcparser, flag, option
+from arcparse import arcparser, flag, mx_group, option
 from arcparse.errors import InvalidArgument
 
 
 def test_group_as_untyped_attribute() -> None:
     @arcparser
     class Args:
-        group = MxGroup()
+        group = mx_group()
         foo: str | None = option(mx_group=group)
         bar: str | None = option(mx_group=group)
 
@@ -18,7 +18,7 @@ def test_group_as_untyped_attribute() -> None:
 
 def test_group_elements_both_nonoptional() -> None:
     class Args:
-        foo: str = option(mx_group=(group := MxGroup()))
+        foo: str = option(mx_group=(group := mx_group()))
         bar: str = option(mx_group=group)
 
     with pytest.raises(InvalidArgument):
@@ -27,7 +27,7 @@ def test_group_elements_both_nonoptional() -> None:
 
 def test_group_elements_some_nonoptional() -> None:
     class Args:
-        foo: str = option(mx_group=(group := MxGroup()))
+        foo: str = option(mx_group=(group := mx_group()))
         bar: str | None = option(mx_group=group)
 
     with pytest.raises(InvalidArgument):
@@ -36,10 +36,10 @@ def test_group_elements_some_nonoptional() -> None:
 
 @arcparser
 class Args:
-    foo: str | None = option(mx_group=(option_group := MxGroup()))
+    foo: str | None = option(mx_group=(option_group := mx_group()))
     bar: str | None = option(mx_group=option_group)
 
-    flag1: bool = flag(mx_group=(flag_group := MxGroup()))
+    flag1: bool = flag(mx_group=(flag_group := mx_group()))
     flag2: bool = flag(mx_group=flag_group)
 
 

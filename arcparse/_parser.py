@@ -1,19 +1,23 @@
-from __future__ import annotations
-
-from argparse import ArgumentParser, _ActionsContainer
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import StrEnum
 from types import NoneType, UnionType
 from typing import Any, Union, get_args, get_origin
+import argparse
 import inspect
 import re
 
-from ._arguments import MxGroup, _BaseArgument, _BaseValueArgument, _Flag, _Option, void
+from ._arguments import BaseArgument, Flag, MxGroup, Option, Subparsers, void
+from ._partial_arguments import (
+    _BasePartialArgument,
+    _PartialFlag,
+    _PartialMxGroup,
+    _PartialOption,
+    _PartialSubparsers,
+)
 from ._typehints import (
     extract_collection_type,
     extract_literal_strings,
-    extract_optional_type,
     extract_subparsers_from_typehint,
     extract_type_from_typehint,
 )
@@ -21,7 +25,50 @@ from .converters import itemwise
 from .errors import InvalidArgument, InvalidParser, InvalidTypehint, MissingConverter
 
 
-type NameTypeArg[TArg: "_BaseArgument | _Subparsers"] = tuple[str, type, TArg]
+@dataclass
+class Parser[T]:
+    shape: type[T]
+    arguments: dict[str, BaseArgument] = field(default_factory=dict)
+    mx_groups: list[MxGroup] = field(default_factory=list)
+
+    def apply(self, actions_container: argparse._ActionsContainer) -> None:
+        for name, argument in self.arguments.items():
+            argument.apply(actions_container, name)
+
+        for mx_group in self.mx_groups:
+            group = actions_container.add_mutually_exclusive_group(required=mx_group.required)
+            for name, argument in mx_group.arguments.items():
+                argument.apply(group, name)
+
+
+@dataclass
+class RootParser[T]:
+    parser: Parser
+    subparsers: tuple[str, Subparsers] | None = None
+
+    def parse(self, args: Sequence[str] | None = None) -> T:
+        ap_parser = argparse.ArgumentParser()
+        self.parser.apply(ap_parser)
+        if self.subparsers is not None:
+            name, subparsers = self.subparsers
+            ap_subparsers = ap_parser.add_subparsers(dest=name, required=subparsers.required)
+            for name, subparser in subparsers.sub_parsers.items():
+                ap_subparser = ap_subparsers.add_parser(name)
+                subparser.apply(ap_subparser)
+
+        parsed = ap_parser.parse_args(args)
+
+        ret = parsed.__dict__.copy()
+        if self.subparsers is not None:
+            name, subparsers = self.subparsers
+
+            # optional subparsers will result in `dict[name]` being `None`
+            if chosen_subparser := getattr(parsed, name, None):
+                sub_parser = subparsers.sub_parsers[chosen_subparser]
+                sub_parser.shape
+                ret[name] = _instantiate_from_dict(sub_parser.shape, parsed.__dict__)
+
+        return _instantiate_from_dict(self.parser.shape, ret)
 
 
 def _instantiate_from_dict[T](cls: type[T], dict_: dict[str, Any]) -> T:
@@ -35,7 +82,7 @@ def _instantiate_from_dict[T](cls: type[T], dict_: dict[str, Any]) -> T:
     return obj
 
 
-def _collect_arguments(cls: type) -> list[NameTypeArg[_BaseArgument]]:
+def _collect_partial_arguments(cls: type) -> dict[str, tuple[type, _BasePartialArgument]]:
     # collect declared typehints
     all_params: dict[str, tuple[type, Any]] = {
         name: (typehint, void)
@@ -50,7 +97,7 @@ def _collect_arguments(cls: type) -> list[NameTypeArg[_BaseArgument]]:
 
         # ignore untyped class variables un
         if key not in all_params:
-            if isinstance(value, _BaseArgument):
+            if isinstance(value, _BasePartialArgument):
                 raise InvalidTypehint(f"Argument {key} is missing a type-hint and would be ignored")
             continue
 
@@ -58,9 +105,9 @@ def _collect_arguments(cls: type) -> list[NameTypeArg[_BaseArgument]]:
         all_params[key] = (typehint, value)
 
     # construct arguments
-    arguments: list[NameTypeArg] = []
+    arguments: dict[str, tuple[type, _BasePartialArgument]] = {}
     for name, (typehint, value) in all_params.items():
-        if isinstance(value, _Subparsers):
+        if isinstance(value, _PartialSubparsers):
             continue
 
         if get_origin(typehint) in {Union, UnionType}:
@@ -68,161 +115,72 @@ def _collect_arguments(cls: type) -> list[NameTypeArg[_BaseArgument]]:
             if len(union_args) > 2 or NoneType not in union_args:
                 raise InvalidTypehint("Union can be used only for optional arguments (length of 2, 1 of them being None)")
 
-        if isinstance(value, _BaseArgument):
+        if isinstance(value, _BasePartialArgument):
             argument = value
+        elif typehint is bool:
+            if value is not void:
+                raise InvalidArgument("defaults don't make sense for flags")
+            argument = _PartialFlag()
         else:
-            argument = _construct_argument(typehint, value)
-
-        arguments.append((name, typehint, argument))
+            argument = _PartialOption(default=value)
+        arguments[name] = (typehint, argument)
 
     return arguments
 
 
-def _construct_argument(typehint: type, default: Any) -> _BaseArgument:
-    if typehint is bool:
-        if default is not void:
-            raise InvalidArgument("defaults don't make sense for flags")
-        return _Flag()
-
-    actual_type = extract_type_from_typehint(typehint)
-    if actual_type is bool:
-        raise MissingConverter("Can't construct argument with inner type bool, conversion would be always True")
-    elif getattr(actual_type, "_is_protocol", False):
-        raise MissingConverter("Argument with no converter can't be typed as a Protocol subclass")
-
-    if type_ := extract_collection_type(typehint):
-        converter = itemwise(type_)
-    else:
-        converter = actual_type
-
-    if choices := extract_literal_strings(actual_type):
-        return _Option(default=default, choices=choices)
-    elif issubclass(actual_type, StrEnum):
-        return _Option(default=default, choices=list(actual_type), converter=converter)
-    elif actual_type == re.Pattern:
-        return _Option(default=default, converter=re.compile)
-
-    return _Option(default=default, converter=converter if actual_type is not str else None)
-
-
-def _check_argument_sanity(name: str, typehint: type, arg: _BaseArgument) -> None:
-    if isinstance(arg, _BaseValueArgument) and extract_type_from_typehint(typehint) is bool and arg.converter is None:
-        raise InvalidTypehint(f"Argument \"{name}\" yielding a value can't be typed as `bool`")
-
-    if arg.mx_group is not None and isinstance(arg, _BaseValueArgument) and extract_optional_type(typehint) is None and arg.default is void:
-        raise InvalidArgument(f"Argument \"{name}\" in mutually exclusive group has to have a default")
-
-
-def _collect_subparsers(cls: type) -> NameTypeArg[_Subparsers] | None:
-    all_subparsers = [(key, value) for key, value in vars(cls).items() if isinstance(value, _Subparsers)]
+def _collect_subparsers(shape: type) -> tuple[str, type, _PartialSubparsers] | None:
+    all_subparsers = [(key, value) for key, value in vars(shape).items() if isinstance(value, _PartialSubparsers)]
     if not all_subparsers:
         return None
 
     elif len(all_subparsers) > 1:
-        raise InvalidParser(f"Multiple subparsers definitions found on {cls}")
+        raise InvalidParser(f"Multiple subparsers definitions found on {shape}")
 
-    name, subparsers = all_subparsers[0]
-    if not (typehint := inspect.get_annotations(cls, eval_str=True)[name]):
+    name, partial_subparsers = all_subparsers[0]
+    if not (typehint := inspect.get_annotations(shape, eval_str=True).get(name)):
         raise InvalidTypehint("subparsers have to be type-hinted")
 
-    if not extract_subparsers_from_typehint(typehint):
-        raise InvalidTypehint(f"Unable to extract subparser types from {typehint}, expected a non-empty union of ArcParser types")
-
-    return (name, typehint, subparsers)
+    return name, typehint, partial_subparsers
 
 
-@dataclass
-class _Subparsers:
-    names: list[str]
+def _make_parser[T](shape: type[T]) -> Parser[T]:
+    arguments = {}
+    mx_groups: dict[_PartialMxGroup, MxGroup] = {}
+    for name, (typehint, partial_argument) in _collect_partial_arguments(shape).items():
+        mx_group = partial_argument.mx_group
+        argument = partial_argument.resolve_with_typehint(typehint)
 
-    def apply(
-        self,
-        parser: ArgumentParser,
-        name: str,
-        typehint: type,
-    ) -> None:
-        if not (subparser_types := extract_subparsers_from_typehint(typehint)):
-            raise InvalidTypehint(f"Unable to extract subparser types from {typehint}, expected a non-empty union of ArcParser types")
+        if mx_group is None:
+            arguments[name] = argument
+        else:
+            if mx_group not in mx_groups:
+                mx_groups[mx_group] = MxGroup(required=mx_group.required)
+            mx_groups[mx_group].arguments[name] = argument
 
-        subparsers_kwargs: dict = {"dest": name}
-        if NoneType not in subparser_types:
-            subparsers_kwargs["required"] = True
-        subparsers = parser.add_subparsers(**subparsers_kwargs)
-
-        nonnull_subparser_types: list[type[_Parser]] = [
-            typ for typ in subparser_types if typ is not NoneType
-        ]  # type: ignore  (NoneType is getting confused with None)
-
-        for name, subparser_type in zip(self.names, nonnull_subparser_types):
-            subparser = _make_parser(subparser_type)
-            subparser.apply(subparsers.add_parser(name))
+    return Parser(
+        shape,
+        arguments,
+        list(mx_groups.values()),
+    )
 
 
-class _Parser[T]:
-    def __init__(
-        self,
-        cls: type[T],
-        arguments: list[NameTypeArg[_BaseArgument]] | None = None,
-        mx_groups: dict[MxGroup, list[NameTypeArg[_BaseArgument]]] | None = None,
-        subparsers: NameTypeArg[_Subparsers] | None = None,
-    ):
-        self._cls = cls
-        self._arguments = arguments if arguments is not None else {}
-        self._mx_groups = mx_groups if mx_groups is not None else {}
-        self._subparsers = subparsers
+def _make_root_parser[T](shape: type[T]) -> RootParser[T]:
+    match _collect_subparsers(shape):
+        case (name, typehint, partial_subparsers):
+            subshapes = extract_subparsers_from_typehint(typehint)
+            subparsers_by_name = {
+                name: _make_parser(subshape)
+                for name, subshape in zip(partial_subparsers.names, subshapes)
+            }
+            subparsers = (name, Subparsers(subparsers_by_name, required=NoneType not in subshapes))
+        case _:
+            subparsers = None
 
-        assert all(arg.mx_group is None for _, _, arg in self._arguments)
-
-    def parse(self, args: Sequence[str] | None = None) -> T:
-        parser = ArgumentParser()
-        self.apply(parser)
-        if self._subparsers is not None:
-            name, typehint, subparsers = self._subparsers
-            subparsers.apply(parser, name, typehint)
-        parsed = parser.parse_args(args)
-
-        ret = parsed.__dict__.copy()
-        if self._subparsers is not None:
-            name, typehint, subparsers = self._subparsers
-
-            # optional subparsers will result in `dict[name]` being `None`
-            subshape_classes = extract_subparsers_from_typehint(typehint)
-            assert subshape_classes is not None
-            if chosen_subparser := getattr(parsed, name):
-                subshape_class = subshape_classes[subparsers.names.index(chosen_subparser)]
-                ret[name] = _instantiate_from_dict(subshape_class, parsed.__dict__)
-
-        return _instantiate_from_dict(self._cls, ret)
-
-    def apply(self, actions_container: _ActionsContainer) -> None:
-        for (name, typehint, argument) in self._arguments:
-            argument.apply(actions_container, name, typehint)
-
-        for mx_group, arguments in self._mx_groups.items():
-            group = actions_container.add_mutually_exclusive_group(required=mx_group.required)
-            for name, typehint, arg in arguments:
-                arg.apply(group, name, typehint)
+    return RootParser(
+        _make_parser(shape),
+        subparsers,
+    )
 
 
-def _make_parser[T](cls: type[T]) -> _Parser[T]:
-    arguments = _collect_arguments(cls)
-    subparsers = _collect_subparsers(cls)
-
-    for name, type, arg in arguments:
-        _check_argument_sanity(name, type, arg)
-
-    mx_groups: dict[MxGroup, list[NameTypeArg[_BaseArgument]]] = {}
-    for argument in arguments:
-        if argument[2].mx_group is not None:
-            mx_groups.setdefault(argument[2].mx_group, []).append(argument)
-    arguments = [argument for argument in arguments if argument[2].mx_group is None]
-
-    return _Parser(cls, arguments, mx_groups, subparsers)
-
-
-def arcparser[T](cls: type[T]) -> _Parser[T]:
-    return _make_parser(cls)
-
-
-def subparsers(*args: str) -> Any:
-    return _Subparsers(names=list(args))
+def arcparser[T](shape: type[T]) -> RootParser[T]:
+    return _make_root_parser(shape)

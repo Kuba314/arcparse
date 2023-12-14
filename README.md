@@ -124,7 +124,7 @@ Use `mx_group` to group multiple arguments together in a mutually exclusive grou
 ```py
 @arcparser
 class Args:
-    group = MxGroup()  # alternatively use `(group := MxGroup())` on the next line
+    group = mx_group()  # alternatively use `(group := mx_group())` on the next line
     flag: bool = flag(mx_group=group)
     option: str | None = option(mx_group=group)
 ```
