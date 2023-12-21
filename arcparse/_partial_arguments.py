@@ -6,7 +6,16 @@ import re
 
 from arcparse.errors import InvalidArgument, InvalidTypehint, MissingConverter
 
-from ._arguments import BaseArgument, Flag, NoFlag, Option, Positional, Void, void
+from ._arguments import (
+    BaseValueArgument,
+    ContainerApplicable,
+    Flag,
+    NoFlag,
+    Option,
+    Positional,
+    Void,
+    void,
+)
 from ._typehints import (
     extract_collection_type,
     extract_optional_type,
@@ -21,33 +30,34 @@ class PartialMxGroup:
 
 
 @dataclass(kw_only=True)
-class BasePartialArgument[TResolved: BaseArgument](ABC):
+class BasePartialArgument[R: ContainerApplicable](ABC):
     mx_group: PartialMxGroup | None = None
-    help: str | None = None
 
     @abstractmethod
-    def resolve_with_typehint(self, typehint: type) -> TResolved:
+    def resolve_with_typehint(self, typehint: type) -> R:
         ...
 
     def resolve_to_kwargs(self, typehint: type) -> dict[str, Any]:
-        return {
+        return {}
+
+
+@dataclass(kw_only=True)
+class BaseSinglePartialArgument[R: ContainerApplicable](BasePartialArgument[R]):
+    help: str | None = None
+
+    def resolve_to_kwargs(self, typehint: type) -> dict[str, Any]:
+        return super().resolve_to_kwargs(typehint) | {
             "help": self.help,
         }
 
 
 @dataclass(kw_only=True)
-class BasePartialValueArgument[T](BasePartialArgument):
+class BasePartialValueArgument[T, R: BaseValueArgument](BaseSinglePartialArgument[R]):
     default: T | Void = void
     choices: list[T] | None = None
     converter: Callable[[str], T] | None = None
     name_override: str | None = None
     at_least_one: bool = False
-
-    def need_multiple(self, typehint: type) -> bool:
-        return (
-            (self.converter is None and extract_collection_type(typehint) is not None)
-            or isinstance(self.converter, itemwise)
-        )
 
     def resolve_to_kwargs(self, typehint: type) -> dict[str, Any]:
         kwargs = super().resolve_to_kwargs(typehint)
@@ -79,9 +89,19 @@ class BasePartialValueArgument[T](BasePartialArgument):
 
         return kwargs
 
+    def need_multiple(self, typehint: type) -> bool:
+        return (
+            (self.converter is None and extract_collection_type(typehint) is not None)
+            or isinstance(self.converter, itemwise)
+        )
+
 
 @dataclass
-class PartialPositional[T](BasePartialValueArgument[T]):
+class PartialPositional[T](BasePartialValueArgument[T, Positional]):
+    def resolve_with_typehint(self, typehint: type) -> Positional:
+        kwargs = self.resolve_to_kwargs(typehint)
+        return Positional(**kwargs)
+
     def resolve_to_kwargs(self, typehint: type) -> dict[str, Any]:
         kwargs = super().resolve_to_kwargs(typehint)
 
@@ -96,33 +116,22 @@ class PartialPositional[T](BasePartialValueArgument[T]):
 
         if self.need_multiple(typehint):
             kwargs["nargs"] = "+" if self.at_least_one else "*"
-            kwargs["metavar"] = self.name_override  # if self.name_override is not None else name.upper()
+            kwargs["metavar"] = self.name_override
         elif optional:
             kwargs["nargs"] = "?"
 
         return kwargs
 
-    def resolve_with_typehint(self, typehint: type) -> Positional:
-        kwargs = self.resolve_to_kwargs(typehint)
-        return Positional(**kwargs)
-
 
 @dataclass
-class PartialOption[T](BasePartialValueArgument[T]):
+class PartialOption[T](BasePartialValueArgument[T, Option]):
     short: str | None = None
     short_only: bool = False
     append: bool = False
 
-    def get_argparse_args(self, name: str, typehint: type) -> list[str]:
-        name = self.name_override if self.name_override is not None else name.replace("_", "-")
-        args = [f"--{name}"]
-        if self.short_only:
-            assert self.short is not None
-            return [self.short]
-        elif self.short is not None:
-            args.insert(0, self.short)
-
-        return args
+    def resolve_with_typehint(self, typehint: type) -> Option:
+        kwargs = self.resolve_to_kwargs(typehint)
+        return Option(**kwargs)
 
     def resolve_to_kwargs(self, typehint: type) -> dict[str, Any]:
         kwargs = super().resolve_to_kwargs(typehint)
@@ -148,13 +157,9 @@ class PartialOption[T](BasePartialValueArgument[T]):
 
         return kwargs
 
-    def resolve_with_typehint(self, typehint: type) -> Option:
-        kwargs = self.resolve_to_kwargs(typehint)
-        return Option(**kwargs)
-
 
 @dataclass
-class PartialFlag(BasePartialArgument):
+class PartialFlag(BaseSinglePartialArgument[Flag]):
     short: str | None = None
     short_only: bool = False
 
@@ -166,7 +171,7 @@ class PartialFlag(BasePartialArgument):
 
 
 @dataclass
-class PartialNoFlag(BasePartialArgument):
+class PartialNoFlag(BaseSinglePartialArgument[NoFlag]):
     def resolve_with_typehint(self, typehint: type) -> NoFlag:
         kwargs = self.resolve_to_kwargs(typehint)
         return NoFlag(**kwargs)

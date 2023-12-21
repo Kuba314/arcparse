@@ -1,8 +1,8 @@
 from abc import ABC, abstractmethod
-from argparse import _ActionsContainer
+from argparse import Action, _ActionsContainer
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, Protocol
 
 
 if TYPE_CHECKING:
@@ -15,18 +15,29 @@ class Void:
 void = Void()
 
 
-@dataclass(kw_only=True)
-class BaseArgument(ABC):
-    help: str | None = None
+class ContainerApplicable(Protocol):
+    def apply(self, actions_container: _ActionsContainer, name: str) -> Action:
+        ...
 
-    def apply(self, actions_container: _ActionsContainer, name: str) -> None:
+
+class BaseSingleArgument(ContainerApplicable, ABC):
+    def apply(self, actions_container: _ActionsContainer, name: str) -> Action:
         args = self.get_argparse_args(name)
         kwargs = self.get_argparse_kwargs(name)
-        actions_container.add_argument(*args, **kwargs)
+        return actions_container.add_argument(*args, **kwargs)
 
     @abstractmethod
     def get_argparse_args(self, name: str) -> list[str]:
         ...
+
+    @abstractmethod
+    def get_argparse_kwargs(self, name: str) -> dict[str, Any]:
+        ...
+
+
+@dataclass(kw_only=True)
+class BaseArgument(BaseSingleArgument):
+    help: str | None = None
 
     def get_argparse_kwargs(self, name: str) -> dict[str, Any]:
         kwargs = {}
@@ -73,7 +84,7 @@ class NoFlag(BaseArgument):
 
 
 @dataclass(kw_only=True)
-class _BaseValueArgument[T](BaseArgument):
+class BaseValueArgument[T](BaseArgument):
     default: T | Void = void
     converter: Callable[[str], T] | None = None
     choices: list[T] | None = None
@@ -98,13 +109,13 @@ class _BaseValueArgument[T](BaseArgument):
 
 
 @dataclass
-class Positional[T](_BaseValueArgument[T]):
+class Positional[T](BaseValueArgument[T]):
     def get_argparse_args(self, name: str) -> list[str]:
         return [name]
 
 
 @dataclass
-class Option[T](_BaseValueArgument[T]):
+class Option[T](BaseValueArgument[T]):
     name_override: str | None = None
     short: str | None = None
     short_only: bool = False
