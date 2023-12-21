@@ -9,11 +9,11 @@ import re
 
 from ._arguments import BaseArgument, Flag, MxGroup, Option, Subparsers, void
 from ._partial_arguments import (
-    _BasePartialArgument,
-    _PartialFlag,
-    _PartialMxGroup,
-    _PartialOption,
-    _PartialSubparsers,
+    BasePartialArgument,
+    PartialFlag,
+    PartialMxGroup,
+    PartialOption,
+    PartialSubparsers,
 )
 from ._typehints import (
     extract_collection_type,
@@ -82,7 +82,7 @@ def _instantiate_from_dict[T](cls: type[T], dict_: dict[str, Any]) -> T:
     return obj
 
 
-def _collect_partial_arguments(cls: type) -> dict[str, tuple[type, _BasePartialArgument]]:
+def _collect_partial_arguments(cls: type) -> dict[str, tuple[type, BasePartialArgument]]:
     # collect declared typehints
     all_params: dict[str, tuple[type, Any]] = {
         name: (typehint, void)
@@ -97,7 +97,7 @@ def _collect_partial_arguments(cls: type) -> dict[str, tuple[type, _BasePartialA
 
         # ignore untyped class variables un
         if key not in all_params:
-            if isinstance(value, _BasePartialArgument):
+            if isinstance(value, BasePartialArgument):
                 raise InvalidTypehint(f"Argument {key} is missing a type-hint and would be ignored")
             continue
 
@@ -105,9 +105,9 @@ def _collect_partial_arguments(cls: type) -> dict[str, tuple[type, _BasePartialA
         all_params[key] = (typehint, value)
 
     # construct arguments
-    arguments: dict[str, tuple[type, _BasePartialArgument]] = {}
+    arguments: dict[str, tuple[type, BasePartialArgument]] = {}
     for name, (typehint, value) in all_params.items():
-        if isinstance(value, _PartialSubparsers):
+        if isinstance(value, PartialSubparsers):
             continue
 
         if get_origin(typehint) in {Union, UnionType}:
@@ -115,21 +115,21 @@ def _collect_partial_arguments(cls: type) -> dict[str, tuple[type, _BasePartialA
             if len(union_args) > 2 or NoneType not in union_args:
                 raise InvalidTypehint("Union can be used only for optional arguments (length of 2, 1 of them being None)")
 
-        if isinstance(value, _BasePartialArgument):
+        if isinstance(value, BasePartialArgument):
             argument = value
         elif typehint is bool:
             if value is not void:
                 raise InvalidArgument("defaults don't make sense for flags")
-            argument = _PartialFlag()
+            argument = PartialFlag()
         else:
-            argument = _PartialOption(default=value)
+            argument = PartialOption(default=value)
         arguments[name] = (typehint, argument)
 
     return arguments
 
 
-def _collect_subparsers(shape: type) -> tuple[str, type, _PartialSubparsers] | None:
-    all_subparsers = [(key, value) for key, value in vars(shape).items() if isinstance(value, _PartialSubparsers)]
+def _collect_subparsers(shape: type) -> tuple[str, type, PartialSubparsers] | None:
+    all_subparsers = [(key, value) for key, value in vars(shape).items() if isinstance(value, PartialSubparsers)]
     if not all_subparsers:
         return None
 
@@ -145,7 +145,7 @@ def _collect_subparsers(shape: type) -> tuple[str, type, _PartialSubparsers] | N
 
 def _make_parser[T](shape: type[T]) -> Parser[T]:
     arguments = {}
-    mx_groups: dict[_PartialMxGroup, MxGroup] = {}
+    mx_groups: dict[PartialMxGroup, MxGroup] = {}
     for name, (typehint, partial_argument) in _collect_partial_arguments(shape).items():
         mx_group = partial_argument.mx_group
         argument = partial_argument.resolve_with_typehint(typehint)

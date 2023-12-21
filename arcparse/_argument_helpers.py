@@ -3,12 +3,14 @@ from typing import Any
 
 from ._arguments import Void, void
 from ._partial_arguments import (
-    _PartialFlag,
-    _PartialMxGroup,
-    _PartialNoFlag,
-    _PartialOption,
-    _PartialPositional,
-    _PartialSubparsers,
+    BasePartialArgument,
+    BasePartialValueArgument,
+    PartialFlag,
+    PartialMxGroup,
+    PartialNoFlag,
+    PartialOption,
+    PartialPositional,
+    PartialSubparsers,
 )
 
 
@@ -19,10 +21,10 @@ def positional[T](
     converter: Callable[[str], T] | None = None,
     name_override: str | None = None,
     at_least_one: bool = False,
-    mx_group: _PartialMxGroup | None = None,
+    mx_group: PartialMxGroup | None = None,
     help: str | None = None,
 ) -> T:
-    return _PartialPositional(
+    return PartialPositional(
         default=default,
         choices=choices,
         converter=converter,
@@ -43,7 +45,7 @@ def option[T](
     name_override: str | None = None,
     append: bool = False,
     at_least_one: bool = False,
-    mx_group: _PartialMxGroup | None = None,
+    mx_group: PartialMxGroup | None = None,
     help: str | None = None,
 ) -> T:
     if short_only and short is None:
@@ -52,7 +54,7 @@ def option[T](
     if append and at_least_one:
         raise ValueError("`append` is incompatible with `at_least_one`")
 
-    return _PartialOption(
+    return PartialOption(
         short=short,
         short_only=short_only,
         default=default,
@@ -70,12 +72,12 @@ def flag(
     short: str | None = None,
     *,
     short_only: bool = False,
-    mx_group: _PartialMxGroup | None = None,
+    mx_group: PartialMxGroup | None = None,
     help: str | None = None,
 ) -> bool:
     if short_only and short is None:
         raise ValueError("`short_only` cannot be True if `short` is not provided")
-    return _PartialFlag(
+    return PartialFlag(
         short=short,
         short_only=short_only,
         help=help,
@@ -83,13 +85,13 @@ def flag(
     )  # type: ignore
 
 
-def no_flag(*, mx_group: _PartialMxGroup | None = None, help: str | None = None) -> bool:
-    return _PartialNoFlag(mx_group=mx_group, help=help)  # type: ignore
+def no_flag(*, mx_group: PartialMxGroup | None = None, help: str | None = None) -> bool:
+    return PartialNoFlag(mx_group=mx_group, help=help)  # type: ignore
 
 
-def mx_group(*, required: bool = False) -> _PartialMxGroup:
-    return _PartialMxGroup(required=required)
+def mx_group(*, required: bool = False) -> PartialMxGroup:
+    return PartialMxGroup(required=required)
 
 
 def subparsers(*args: str) -> Any:
-    return _PartialSubparsers(names=list(args))
+    return PartialSubparsers(names=list(args))

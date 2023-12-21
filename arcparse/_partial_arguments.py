@@ -16,13 +16,13 @@ from .converters import itemwise
 
 
 @dataclass(kw_only=True, eq=False)
-class _PartialMxGroup:
+class PartialMxGroup:
     required: bool = False
 
 
 @dataclass(kw_only=True)
-class _BasePartialArgument[TResolved: BaseArgument](ABC):
-    mx_group: _PartialMxGroup | None = None
+class BasePartialArgument[TResolved: BaseArgument](ABC):
+    mx_group: PartialMxGroup | None = None
     help: str | None = None
 
     @abstractmethod
@@ -35,9 +35,8 @@ class _BasePartialArgument[TResolved: BaseArgument](ABC):
         }
 
 
-
 @dataclass(kw_only=True)
-class _BasePartialValueArgument[T](_BasePartialArgument):
+class BasePartialValueArgument[T](BasePartialArgument):
     default: T | Void = void
     choices: list[T] | None = None
     converter: Callable[[str], T] | None = None
@@ -82,7 +81,7 @@ class _BasePartialValueArgument[T](_BasePartialArgument):
 
 
 @dataclass
-class _PartialPositional[T](_BasePartialValueArgument[T]):
+class PartialPositional[T](BasePartialValueArgument[T]):
     def resolve_to_kwargs(self, typehint: type) -> dict[str, Any]:
         kwargs = super().resolve_to_kwargs(typehint)
 
@@ -109,7 +108,7 @@ class _PartialPositional[T](_BasePartialValueArgument[T]):
 
 
 @dataclass
-class _PartialOption[T](_BasePartialValueArgument[T]):
+class PartialOption[T](BasePartialValueArgument[T]):
     short: str | None = None
     short_only: bool = False
     append: bool = False
@@ -155,7 +154,7 @@ class _PartialOption[T](_BasePartialValueArgument[T]):
 
 
 @dataclass
-class _PartialFlag(_BasePartialArgument):
+class PartialFlag(BasePartialArgument):
     short: str | None = None
     short_only: bool = False
 
@@ -167,12 +166,12 @@ class _PartialFlag(_BasePartialArgument):
 
 
 @dataclass
-class _PartialNoFlag(_BasePartialArgument):
+class PartialNoFlag(BasePartialArgument):
     def resolve_with_typehint(self, typehint: type) -> NoFlag:
         kwargs = self.resolve_to_kwargs(typehint)
         return NoFlag(**kwargs)
 
 
 @dataclass
-class _PartialSubparsers:
+class PartialSubparsers:
     names: list[str]
