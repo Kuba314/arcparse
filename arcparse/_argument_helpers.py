@@ -1,5 +1,5 @@
 from collections.abc import Callable
-from typing import Any, Literal, overload
+from typing import Any
 
 from ._arguments import Void, void
 from ._partial_arguments import (
@@ -12,40 +12,16 @@ from ._partial_arguments import (
 )
 
 
-@overload
 def positional[T](
     *,
     default: T | Void = void,
     choices: list[T] | None = None,
     converter: Callable[[str], T] | None = None,
     name_override: str | None = None,
-    at_least_one: Literal[False] = False,
+    at_least_one: bool = False,
     mx_group: _PartialMxGroup | None = None,
     help: str | None = None,
-) -> T: ...
-
-@overload
-def positional[T](
-    *,
-    default: list[T] | Void = void,
-    choices: list[T] | None = None,
-    converter: Callable[[str], list[T]] | None = None,
-    name_override: str | None = None,
-    at_least_one: Literal[True] = True,
-    mx_group: _PartialMxGroup | None = None,
-    help: str | None = None,
-) -> list[T]: ...
-
-def positional(  # type: ignore
-    *,
-    default=void,
-    choices=None,
-    converter=None,
-    name_override=None,
-    at_least_one=False,
-    mx_group=None,
-    help=None,
-):
+) -> T:
     return _PartialPositional(
         default=default,
         choices=choices,
@@ -54,10 +30,9 @@ def positional(  # type: ignore
         at_least_one=at_least_one,
         mx_group=mx_group,
         help=help,
-    )
+    )  # type: ignore
 
 
-@overload
 def option[T](
     short: str | None = None,
     *,
@@ -66,58 +41,17 @@ def option[T](
     choices: list[T] | None = None,
     converter: Callable[[str], T] | None = None,
     name_override: str | None = None,
-    append: Literal[False] = False,
-    at_least_one: Literal[False] = False,
+    append: bool = False,
+    at_least_one: bool = False,
     mx_group: _PartialMxGroup | None = None,
     help: str | None = None,
-) -> T: ...
-
-
-@overload
-def option[T](
-    short: str | None = None,
-    *,
-    short_only: bool = False,
-    default: list[T] | Void = void,
-    choices: list[T] | None = None,
-    converter: Callable[[str], list[T]] | None = None,
-    name_override: str | None = None,
-    append: Literal[True] = True,
-    at_least_one: Literal[False] = False,
-    mx_group: _PartialMxGroup | None = None,
-    help: str | None = None,
-) -> list[T]: ...
-
-@overload
-def option[T](
-    short: str | None = None,
-    *,
-    short_only: bool = False,
-    default: list[T] | Void = void,
-    choices: list[T] | None = None,
-    converter: Callable[[str], list[T]] | None = None,
-    name_override: str | None = None,
-    append: Literal[False] = False,
-    at_least_one: Literal[True] = True,
-    mx_group: _PartialMxGroup | None = None,
-    help: str | None = None,
-) -> list[T]: ...
-
-def option(  # type: ignore
-    short=None,
-    *,
-    short_only=False,
-    default=void,
-    choices=None,
-    converter=None,
-    name_override=None,
-    append=False,
-    at_least_one=False,
-    mx_group=None,
-    help=None,
-):
+) -> T:
     if short_only and short is None:
         raise ValueError("`short_only` cannot be True if `short` is not provided")
+
+    if append and at_least_one:
+        raise ValueError("`append` is incompatible with `at_least_one`")
+
     return _PartialOption(
         short=short,
         short_only=short_only,
@@ -129,7 +63,7 @@ def option(  # type: ignore
         at_least_one=at_least_one,
         mx_group=mx_group,
         help=help,
-    )
+    )  # type: ignore
 
 
 def flag(
