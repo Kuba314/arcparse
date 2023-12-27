@@ -31,7 +31,7 @@ defaults = {
         ("-o", {"boo": True}),
     ]
 )
-def test_option_valid(arg_string: str, provided: dict[str, Any]) -> None:
+def test_flag_valid(arg_string: str, provided: dict[str, Any]) -> None:
     parsed = Args.parse(arg_string.split())
 
     for k, v in (defaults | provided).items():
@@ -41,11 +41,11 @@ def test_option_valid(arg_string: str, provided: dict[str, Any]) -> None:
 @pytest.mark.parametrize(
     "arg_string",
     [
-        "flag --bar",
-        "flag --no-foo",
-        "flag --boo",
+        "--bar",
+        "--no-foo",
+        "--boo",
     ]
 )
-def test_option_invalid(arg_string: str) -> None:
+def test_flag_invalid(arg_string: str) -> None:
     with pytest.raises(SystemExit):
         Args.parse(args = arg_string.split())
