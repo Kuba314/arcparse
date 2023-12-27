@@ -27,9 +27,6 @@ For a complete overview of features see [Features](#features).
 ```shell
 # Using pip
 $ pip install arcparse
-
-# locally using poetry
-$ poetry install
 ```
 
 ## Features
