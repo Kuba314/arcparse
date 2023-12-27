@@ -2,7 +2,7 @@ from typing import Any
 
 import pytest
 
-from arcparse import arcparser, flag, mx_group, option
+from arcparse import arcparser, flag, mx_group, option, subparsers, tri_flag
 from arcparse.errors import InvalidArgument
 
 
@@ -87,3 +87,59 @@ def test_mutual_exclusion_required() -> None:
 
     with pytest.raises(SystemExit):
         Args.parse("--foo foo --bar bar".split())
+
+
+def test_tri_flag_inside_mx_group() -> None:
+    @arcparser
+    class Args:
+        foo: str | None = option(mx_group=(group := mx_group()))
+        bar: bool | None = tri_flag(mx_group=group)
+
+    parsed = Args.parse("".split())
+    assert parsed.foo is None
+    assert parsed.bar is None
+
+    parsed = Args.parse("--foo foo".split())
+    assert parsed.foo == "foo"
+    assert parsed.bar is None
+
+    parsed = Args.parse("--bar".split())
+    assert parsed.foo is None
+    assert parsed.bar is True
+
+    parsed = Args.parse("--no-bar".split())
+    assert parsed.foo is None
+    assert parsed.bar is False
+
+    with pytest.raises(SystemExit):
+        Args.parse("--foo foo --bar".split())
+
+    with pytest.raises(SystemExit):
+        Args.parse("--foo foo --no-bar".split())
+
+
+def test_tri_flag_inside_subparser() -> None:
+    class FooArgs:
+        foo: str
+
+    class BarArgs:
+        bar: bool | None
+
+    @arcparser
+    class Args:
+        foo_bar: FooArgs | BarArgs = subparsers("foo", "bar")
+
+    parsed = Args.parse("bar".split())
+    assert isinstance(foo_bar := parsed.foo_bar, BarArgs)
+    assert foo_bar.bar is None
+
+    parsed = Args.parse("bar --bar".split())
+    assert isinstance(foo_bar := parsed.foo_bar, BarArgs)
+    assert foo_bar.bar is True
+
+    parsed = Args.parse("bar --no-bar".split())
+    assert isinstance(foo_bar := parsed.foo_bar, BarArgs)
+    assert foo_bar.bar is False
+
+    with pytest.raises(SystemExit):
+        Args.parse("bar --bar --no-bar".split())

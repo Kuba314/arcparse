@@ -52,12 +52,17 @@ class Args:
 ```
 
 ### Flags
-All arguments type-hinted as `bool` are flags, they use `action="store_true"` in the background. Use `no_flag()` to easily create a `--no-...` flag with `action="store_false"`. Flags as well as options can also define short forms for each argument. They can also disable the long form with `short_only=True`.
+All arguments type-hinted as `bool` are flags, they use `action="store_true"` in the background. Flags (as well as options) can also define short forms for each argument. They can also disable the long form with `short_only=True`.
+
+Use `no_flag()` to easily create a `--no-...` flag with `action="store_false"`.
+
+Use `tri_flag()` (or type-hint argument as `bool | None`) to create a "true" flag and a "false" flag (e.g. `--clone` and `--no-clone`). Passing `--clone` will store `True`, passing `--no-clone` will store `False` and not passing anything will store `None`. Passing both is an error ensured by an implicit mutually exclusive group.
 ```py
 @arcparser
 class Args:
     sync: bool
     recurse: bool = no_flag(help="Do not recurse")
+    clone: bool | None
 
     debug: bool = flag("-d")  # both -d and --debug
     verbose: bool = flag("-v", short_only=True)  # only -v

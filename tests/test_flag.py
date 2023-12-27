@@ -2,7 +2,7 @@ from typing import Any
 
 import pytest
 
-from arcparse import arcparser, flag, no_flag
+from arcparse import arcparser, flag, no_flag, tri_flag
 
 
 @arcparser
@@ -49,3 +49,32 @@ def test_flag_valid(arg_string: str, provided: dict[str, Any]) -> None:
 def test_flag_invalid(arg_string: str) -> None:
     with pytest.raises(SystemExit):
         Args.parse(args = arg_string.split())
+
+
+
+@pytest.mark.parametrize(
+    "string,result",
+    [
+        ("", {"foo": None, "bar": None}),
+        ("--foo", {"foo": True, "bar": None}),
+        ("--no-foo", {"foo": False, "bar": None}),
+        ("--foo --no-foo", None),
+        ("", {"foo": None, "bar": None}),
+        ("--bar", {"foo": None, "bar": True}),
+        ("--no-bar", {"foo": None, "bar": False}),
+        ("--bar --no-bar", None),
+    ],
+)
+def test_tri_flag(string: str, result: dict[str, Any]):
+    @arcparser
+    class Args:
+        foo: bool | None
+        bar: bool | None = tri_flag()
+
+    if result is None:
+        with pytest.raises(SystemExit):
+            Args.parse(string.split())
+    else:
+        args = Args.parse(string.split())
+        for k, v in result.items():
+            assert getattr(args, k) == v

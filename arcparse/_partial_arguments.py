@@ -13,6 +13,7 @@ from ._arguments import (
     NoFlag,
     Option,
     Positional,
+    TriFlag,
     Void,
     void,
 )
@@ -175,6 +176,11 @@ class PartialNoFlag(BaseSinglePartialArgument[NoFlag]):
     def resolve_with_typehint(self, typehint: type) -> NoFlag:
         kwargs = self.resolve_to_kwargs(typehint)
         return NoFlag(**kwargs)
+
+
+class PartialTriFlag(BasePartialArgument[TriFlag]):
+    def resolve_with_typehint(self, typehint: type) -> TriFlag:
+        return TriFlag()
 
 
 @dataclass

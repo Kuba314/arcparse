@@ -1,4 +1,4 @@
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
 from dataclasses import dataclass, field
 from enum import StrEnum
 from types import NoneType, UnionType
@@ -7,17 +7,19 @@ import argparse
 import inspect
 import re
 
-from ._arguments import BaseArgument, Flag, MxGroup, Option, Subparsers, void
+from ._arguments import BaseArgument, Flag, MxGroup, Option, Subparsers, TriFlag, void
 from ._partial_arguments import (
     BasePartialArgument,
     PartialFlag,
     PartialMxGroup,
     PartialOption,
     PartialSubparsers,
+    PartialTriFlag,
 )
 from ._typehints import (
     extract_collection_type,
     extract_literal_strings,
+    extract_optional_type,
     extract_subparsers_from_typehint,
     extract_type_from_typehint,
 )
@@ -30,6 +32,12 @@ class Parser[T]:
     shape: type[T]
     arguments: dict[str, BaseArgument] = field(default_factory=dict)
     mx_groups: list[MxGroup] = field(default_factory=list)
+
+    @property
+    def all_arguments(self) -> Iterator[tuple[str, BaseArgument]]:
+        yield from self.arguments.items()
+        for mx_group in self.mx_groups:
+            yield from mx_group.arguments.items()
 
     def apply(self, actions_container: argparse._ActionsContainer) -> None:
         for name, argument in self.arguments.items():
@@ -65,8 +73,14 @@ class RootParser[T]:
             # optional subparsers will result in `dict[name]` being `None`
             if chosen_subparser := getattr(parsed, name, None):
                 sub_parser = subparsers.sub_parsers[chosen_subparser]
-                sub_parser.shape
+
+                tri_flag_names = [name for name, arg in sub_parser.all_arguments if isinstance(arg, TriFlag)]
+                _reduce_tri_flags(parsed.__dict__, tri_flag_names)
+
                 ret[name] = _instantiate_from_dict(sub_parser.shape, parsed.__dict__)
+
+        tri_flag_names = [name for name, arg in self.parser.all_arguments if isinstance(arg, TriFlag)]
+        _reduce_tri_flags(ret, tri_flag_names)
 
         return _instantiate_from_dict(self.parser.shape, ret)
 
@@ -80,6 +94,22 @@ def _instantiate_from_dict[T](cls: type[T], dict_: dict[str, Any]) -> T:
     obj = cls()
     obj.__dict__ = values
     return obj
+
+
+def _reduce_tri_flags(dict_: dict[str, Any], tri_flag_names: list[str]) -> None:
+    for name in tri_flag_names:
+        no_flag_name = f"no_{name}"
+        yes_case = dict_[name]
+        no_case = dict_[no_flag_name]
+        assert not yes_case or not no_case
+
+        del dict_[no_flag_name]
+        if yes_case:
+            dict_[name] = True
+        elif no_case:
+            dict_[name] = False
+        else:
+            dict_[name] = None
 
 
 def _collect_partial_arguments(cls: type) -> dict[str, tuple[type, BasePartialArgument]]:
@@ -121,6 +151,8 @@ def _collect_partial_arguments(cls: type) -> dict[str, tuple[type, BasePartialAr
             if value is not void:
                 raise InvalidArgument("defaults don't make sense for flags")
             argument = PartialFlag()
+        elif extract_optional_type(typehint) == bool:
+            argument = PartialTriFlag()
         else:
             argument = PartialOption(default=value)
         arguments[name] = (typehint, argument)

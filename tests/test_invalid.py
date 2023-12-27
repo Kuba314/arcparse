@@ -4,14 +4,6 @@ from arcparse import arcparser, positional
 from arcparse.errors import InvalidArgument, InvalidTypehint
 
 
-def test_no_bool_inner_type_without_converter() -> None:
-    class Args:
-        x: bool | None
-
-    with pytest.raises(InvalidTypehint):
-        arcparser(Args)
-
-
 def test_no_bool_valued_type_without_converter() -> None:
     class Args:
         x: bool = positional()

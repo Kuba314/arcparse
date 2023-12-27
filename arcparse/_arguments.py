@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from argparse import Action, _ActionsContainer
+from argparse import Action, _ActionsContainer, _MutuallyExclusiveGroup
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Literal, Protocol
@@ -81,6 +81,18 @@ class NoFlag(BaseArgument):
 
         kwargs["dest"] = name
         return kwargs
+
+
+class TriFlag(ContainerApplicable):
+    def apply(self, actions_container: _ActionsContainer, name: str) -> None:
+        # if actions_container is not an mx group, make it one, argparse
+        # doesn't support mx group nesting
+        if not isinstance(actions_container, _MutuallyExclusiveGroup):
+            actions_container = actions_container.add_mutually_exclusive_group()
+
+        name = name.replace("_", "-")
+        actions_container.add_argument(f"--{name}", action="store_true")
+        actions_container.add_argument(f"--no-{name}", action="store_true")
 
 
 @dataclass(kw_only=True)

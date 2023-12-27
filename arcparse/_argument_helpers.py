@@ -11,6 +11,7 @@ from ._partial_arguments import (
     PartialOption,
     PartialPositional,
     PartialSubparsers,
+    PartialTriFlag,
 )
 
 
@@ -87,6 +88,10 @@ def flag(
 
 def no_flag(*, mx_group: PartialMxGroup | None = None, help: str | None = None) -> bool:
     return PartialNoFlag(mx_group=mx_group, help=help)  # type: ignore
+
+
+def tri_flag(mx_group: PartialMxGroup | None = None) -> bool | None:
+    return PartialTriFlag(mx_group=mx_group)  # type: ignore
 
 
 def mx_group(*, required: bool = False) -> PartialMxGroup:
