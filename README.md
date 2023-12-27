@@ -12,12 +12,12 @@ from arcparse import arcparser, positional
 @arcparser
 class Args:
     name: str = positional()
-    age: int = positional()
+    age: int
     hobbies: list[str] = positional()
     happy: bool
 
 
-args = Args.parse("Thomas 25 news coffee running --happy".split())
+args = Args.parse("--age 25 Thomas news coffee running --happy".split())
 print(f"Hi, my name is {args.name}!")
 ```
 
