@@ -64,3 +64,24 @@ def test_subparsers_optional(string: str, result: tuple[type, dict[str, Any] | N
         else:
             for k, v in value_dict.items():
                 assert getattr(action, k) == v
+
+
+def test_only_one_subparsers() -> None:
+    class Foo:
+        foo: str
+
+    class Bar:
+        bar: str
+
+    class Baz:
+        baz: str
+
+    class Boo:
+        boo: str
+
+    class Args:
+        foo_or_bar: Foo | Bar = subparsers("foo", "bar")
+        baz_or_boo: Baz | Boo = subparsers("baz", "boo")
+
+    with pytest.raises(Exception):
+        arcparser(Args)
