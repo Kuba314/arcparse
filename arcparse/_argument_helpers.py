@@ -18,7 +18,7 @@ from ._partial_arguments import (
 def positional[T](
     *,
     default: T | Void = void,
-    choices: list[T] | None = None,
+    choices: list[str] | None = None,
     converter: Callable[[str], T] | None = None,
     name_override: str | None = None,
     at_least_one: bool = False,
@@ -41,7 +41,7 @@ def option[T](
     *,
     short_only: bool = False,
     default: T | Void = void,
-    choices: list[T] | None = None,
+    choices: list[str] | None = None,
     converter: Callable[[str], T] | None = None,
     name_override: str | None = None,
     append: bool = False,
