@@ -20,7 +20,10 @@ class ContainerApplicable(Protocol):
         ...
 
 
-class BaseSingleArgument(ContainerApplicable, ABC):
+@dataclass(kw_only=True)
+class BaseArgument(ABC, ContainerApplicable):
+    help: str | None = None
+
     def apply(self, actions_container: _ActionsContainer, name: str) -> Action:
         args = self.get_argparse_args(name)
         kwargs = self.get_argparse_kwargs(name)
@@ -29,15 +32,6 @@ class BaseSingleArgument(ContainerApplicable, ABC):
     @abstractmethod
     def get_argparse_args(self, name: str) -> list[str]:
         ...
-
-    @abstractmethod
-    def get_argparse_kwargs(self, name: str) -> dict[str, Any]:
-        ...
-
-
-@dataclass(kw_only=True)
-class BaseArgument(BaseSingleArgument):
-    help: str | None = None
 
     def get_argparse_kwargs(self, name: str) -> dict[str, Any]:
         kwargs = {}
