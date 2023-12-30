@@ -200,7 +200,7 @@ def _make_parser[T](shape: type[T]) -> Parser[T]:
     mx_groups: dict[PartialMxGroup, MxGroup] = {}
     for name, (typehint, partial_argument) in _collect_partial_arguments(shape).items():
         mx_group = partial_argument.mx_group
-        argument = partial_argument.resolve_with_typehint(typehint)
+        argument = partial_argument.resolve_with_typehint(name, typehint)
 
         if mx_group is None:
             arguments[name] = argument

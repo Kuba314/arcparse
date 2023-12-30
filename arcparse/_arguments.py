@@ -20,7 +20,10 @@ class ContainerApplicable(Protocol):
         ...
 
 
-class BaseSingleArgument(ContainerApplicable, ABC):
+@dataclass(kw_only=True)
+class BaseArgument(ABC, ContainerApplicable):
+    help: str | None = None
+
     def apply(self, actions_container: _ActionsContainer, name: str) -> Action:
         args = self.get_argparse_args(name)
         kwargs = self.get_argparse_kwargs(name)
@@ -29,15 +32,6 @@ class BaseSingleArgument(ContainerApplicable, ABC):
     @abstractmethod
     def get_argparse_args(self, name: str) -> list[str]:
         ...
-
-    @abstractmethod
-    def get_argparse_kwargs(self, name: str) -> dict[str, Any]:
-        ...
-
-
-@dataclass(kw_only=True)
-class BaseArgument(BaseSingleArgument):
-    help: str | None = None
 
     def get_argparse_kwargs(self, name: str) -> dict[str, Any]:
         kwargs = {}
@@ -126,15 +120,15 @@ class Positional[T](BaseValueArgument[T]):
 
 @dataclass
 class Option[T](BaseValueArgument[T]):
-    name_override: str | None = None
+    name: str | None = None
+    dest: str | None = None
     short: str | None = None
     short_only: bool = False
     required: bool = False
     append: bool = False
 
     def get_argparse_args(self, name: str) -> list[str]:
-        name = self.name_override if self.name_override is not None else name.replace("_", "-")
-        args = [f"--{name}"]
+        args = [f"--{(self.name or name).replace("_", "-")}"]
         if self.short_only:
             assert self.short is not None
             return [self.short]
@@ -146,8 +140,8 @@ class Option[T](BaseValueArgument[T]):
     def get_argparse_kwargs(self, name: str) -> dict[str, Any]:
         kwargs = super().get_argparse_kwargs(name)
 
-        if self.name_override is not None or self.short_only:
-            kwargs["dest"] = name
+        if self.dest is not None:
+            kwargs["dest"] = self.dest
         if self.required:
             kwargs["required"] = True
         if self.append:
