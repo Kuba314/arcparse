@@ -1,13 +1,11 @@
 from collections.abc import Iterator, Sequence
 from dataclasses import dataclass, field
-from enum import StrEnum
 from types import NoneType, UnionType
 from typing import Any, Union, get_args, get_origin
 import argparse
 import inspect
-import re
 
-from ._arguments import BaseArgument, Flag, MxGroup, Option, Subparsers, TriFlag, void
+from ._arguments import BaseArgument, MxGroup, Subparsers, TriFlag, void
 from ._partial_arguments import (
     BasePartialArgument,
     PartialFlag,
@@ -16,15 +14,8 @@ from ._partial_arguments import (
     PartialSubparsers,
     PartialTriFlag,
 )
-from ._typehints import (
-    extract_collection_type,
-    extract_literal_strings,
-    extract_optional_type,
-    extract_subparsers_from_typehint,
-    extract_type_from_typehint,
-)
-from .converters import itemwise
-from .errors import InvalidArgument, InvalidParser, InvalidTypehint, MissingConverter
+from ._typehints import extract_optional_type, extract_subparsers_from_typehint
+from .errors import InvalidArgument, InvalidParser, InvalidTypehint
 
 
 @dataclass

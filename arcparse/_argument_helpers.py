@@ -3,8 +3,6 @@ from typing import Any
 
 from ._arguments import Void, void
 from ._partial_arguments import (
-    BasePartialArgument,
-    BasePartialValueArgument,
     PartialFlag,
     PartialMxGroup,
     PartialNoFlag,
