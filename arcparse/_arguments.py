@@ -108,8 +108,6 @@ class BaseValueArgument[T](BaseArgument):
 
         if self.default is not void:
             kwargs["default"] = self.default
-        if self.converter is not None:
-            kwargs["type"] = self.converter
         if self.choices is not None:
             kwargs["choices"] = self.choices
         if self.nargs is not None:

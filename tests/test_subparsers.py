@@ -25,15 +25,15 @@ class OptArgs:
 @pytest.mark.parametrize(
     "string,result",
     [
-        ("", None),
+        ("", SystemExit),
         ("foo --arg1 foo", (FooArgs, {"arg1": "foo"})),
         ("bar 123", (BarArgs, {"arg2": 123})),
-        ("bar bar", None),
+        ("bar bar", ValueError),
     ],
 )
-def test_subparsers_required(string: str, result: tuple[type, dict[str, Any]] | None) -> None:
-    if result is None:
-        with pytest.raises(SystemExit):
+def test_subparsers_required(string: str, result: tuple[type, dict[str, Any]] | type[BaseException]) -> None:
+    if isinstance(result, type):
+        with pytest.raises(result):
             ReqArgs.parse(string.split())
     else:
         args = ReqArgs.parse(string.split())
@@ -49,12 +49,12 @@ def test_subparsers_required(string: str, result: tuple[type, dict[str, Any]] | 
         ("", (NoneType, None)),
         ("foo --arg1 foo", (FooArgs, {"arg1": "foo"})),
         ("bar 123", (BarArgs, {"arg2": 123})),
-        ("bar bar", None),
+        ("bar bar", ValueError),
     ],
 )
-def test_subparsers_optional(string: str, result: tuple[type, dict[str, Any] | None] | None) -> None:
-    if result is None:
-        with pytest.raises(SystemExit):
+def test_subparsers_optional(string: str, result: tuple[type, dict[str, Any] | None] | type[BaseException]) -> None:
+    if isinstance(result, type):
+        with pytest.raises(result):
             OptArgs.parse(string.split())
     else:
         args = OptArgs.parse(string.split())

@@ -5,7 +5,16 @@ from typing import Any, Union, get_args, get_origin
 import argparse
 import inspect
 
-from ._arguments import BaseArgument, MxGroup, Subparsers, TriFlag, void
+from arcparse.converters import itemwise
+
+from ._arguments import (
+    BaseArgument,
+    BaseValueArgument,
+    MxGroup,
+    Subparsers,
+    TriFlag,
+    void,
+)
 from ._partial_arguments import (
     BasePartialArgument,
     PartialFlag,
@@ -57,23 +66,39 @@ class RootParser[T]:
 
         parsed = ap_parser.parse_args(args)
 
-        ret = parsed.__dict__.copy()
+        ret = parsed.__dict__
         if self.subparsers is not None:
             name, subparsers = self.subparsers
 
             # optional subparsers will result in `dict[name]` being `None`
             if chosen_subparser := getattr(parsed, name, None):
                 sub_parser = subparsers.sub_parsers[chosen_subparser]
+                ret[name] = _construct_object_with_parsed(sub_parser, ret)
 
-                tri_flag_names = [name for name, arg in sub_parser.all_arguments if isinstance(arg, TriFlag)]
-                _reduce_tri_flags(parsed.__dict__, tri_flag_names)
+        return _construct_object_with_parsed(self.parser, ret)
 
-                ret[name] = _instantiate_from_dict(sub_parser.shape, parsed.__dict__)
 
-        tri_flag_names = [name for name, arg in self.parser.all_arguments if isinstance(arg, TriFlag)]
-        _reduce_tri_flags(ret, tri_flag_names)
+def _construct_object_with_parsed[T](parser: Parser[T], parsed: dict[str, Any]) -> T:
+    # apply argument converters
+    for name, argument in parser.all_arguments:
+        if not isinstance(argument, BaseValueArgument) or argument.converter is None:
+            continue
 
-        return _instantiate_from_dict(self.parser.shape, ret)
+        value = parsed.get(name, argument.default)
+        if isinstance(argument.converter, itemwise):
+            assert isinstance(value, list)
+            parsed[name] = [
+                argument.converter(item) if isinstance(item, str) else item
+                for item in value
+            ]
+        else:
+            parsed[name] = argument.converter(value) if isinstance(value, str) else value
+
+    # reduce tri_flags
+    tri_flag_names = [name for name, arg in parser.all_arguments if isinstance(arg, TriFlag)]
+    _reduce_tri_flags(parsed, tri_flag_names)
+
+    return _instantiate_from_dict(parser.shape, parsed)
 
 
 def _instantiate_from_dict[T](cls: type[T], dict_: dict[str, Any]) -> T:
