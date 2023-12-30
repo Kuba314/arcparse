@@ -54,7 +54,7 @@ class BaseSinglePartialArgument[R: ContainerApplicable](BasePartialArgument[R]):
 
 @dataclass(kw_only=True)
 class BasePartialValueArgument[T, R: BaseValueArgument](BaseSinglePartialArgument[R]):
-    default: T | Void = void
+    default: T | str | Void = void
     choices: list[str] | None = None
     converter: Callable[[str], T] | None = None
     name_override: str | None = None

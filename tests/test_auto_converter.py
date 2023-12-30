@@ -4,7 +4,7 @@ import re
 
 import pytest
 
-from arcparse import arcparser, positional
+from arcparse import arcparser, option, positional
 
 
 class Result(StrEnum):
@@ -15,6 +15,7 @@ class Result(StrEnum):
 @arcparser
 class Args:
     num: int | None
+    num_default: int = option(default="123")
     result: Result | None
     regex: re.Pattern | None
     literal: Literal["yes", "no"] | None
@@ -22,6 +23,7 @@ class Args:
 
 defaults = {
     "num": None,
+    "num_default": 123,
     "result": None,
     "regex": None,
     "literal": None,
@@ -31,6 +33,7 @@ defaults = {
     "arg_string,provided",
     [
         ("--num 123", {"num": 123}),
+        ("--num-default 456", {"num_default": 456}),
         ("--result pass", {"result": Result.PASS}),
         ("--result fail", {"result": Result.FAIL}),
         ("--regex ^\\d+$", {"regex": re.compile(r"^\d+$")}),

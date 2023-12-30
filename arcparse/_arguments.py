@@ -97,7 +97,7 @@ class TriFlag(ContainerApplicable):
 
 @dataclass(kw_only=True)
 class BaseValueArgument[T](BaseArgument):
-    default: T | Void = void
+    default: T | str | Void = void
     converter: Callable[[str], T] | None = None
     choices: list[T] | None = None
     nargs: Literal["?", "*", "+"] | None = None
