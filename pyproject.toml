@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "arcparse"
-version = "0.6.1"
+version = "0.6.2"
 description = "Declare program arguments declaratively and type-safely"
 license = "MIT"
 authors = ["Jakub Rozek <jakub.rozek314@gmail.com>"]
