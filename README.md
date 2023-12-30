@@ -12,12 +12,12 @@ from arcparse import arcparser, positional
 @arcparser
 class Args:
     name: str = positional()
-    age: int = positional()
+    age: int
     hobbies: list[str] = positional()
     happy: bool
 
 
-args = Args.parse("Thomas 25 news coffee running --happy".split())
+args = Args.parse("--age 25 Thomas news coffee running --happy".split())
 print(f"Hi, my name is {args.name}!")
 ```
 
@@ -27,9 +27,6 @@ For a complete overview of features see [Features](#features).
 ```shell
 # Using pip
 $ pip install arcparse
-
-# locally using poetry
-$ poetry install
 ```
 
 ## Features
@@ -55,12 +52,17 @@ class Args:
 ```
 
 ### Flags
-All arguments type-hinted as `bool` are flags, they use `action="store_true"` in the background. Use `no_flag()` to easily create a `--no-...` flag with `action="store_false"`. Flags as well as options can also define short forms for each argument. They can also disable the long form with `short_only=True`.
+All arguments type-hinted as `bool` are flags, they use `action="store_true"` in the background. Flags (as well as options) can also define short forms for each argument. They can also disable the long form with `short_only=True`.
+
+Use `no_flag()` to easily create a `--no-...` flag with `action="store_false"`.
+
+Use `tri_flag()` (or type-hint argument as `bool | None`) to create a "true" flag and a "false" flag (e.g. `--clone` and `--no-clone`). Passing `--clone` will store `True`, passing `--no-clone` will store `False` and not passing anything will store `None`. Passing both is an error ensured by an implicit mutually exclusive group.
 ```py
 @arcparser
 class Args:
     sync: bool
     recurse: bool = no_flag(help="Do not recurse")
+    clone: bool | None
 
     debug: bool = flag("-d")  # both -d and --debug
     verbose: bool = flag("-v", short_only=True)  # only -v
@@ -91,13 +93,14 @@ class Args:
 ```
 
 ### Type conversions
-Automatic type conversions are supported. The type-hint is used in `type=...` in the background (unless it's `str`, which does no conversion). Using a `StrEnum` subclass as a type-hint automatically populates `choices`. Using a `re.Pattern` typehint automatically uses `re.compile` as a converter. A custom type-converter can be used by passing `converter=...` to either `option()` or `positional()`. Come common utility converters are defined in [converters.py](arcparse/converters.py).
+Automatic type conversions are supported. The type-hint is used in `type=...` in the background (unless it's `str`, which does no conversion). Using a `StrEnum` subclass as a type-hint automatically populates `choices`, using `Literal` also populates choices but does not set converter unlike `StrEnum`. Using a `re.Pattern` typehint automatically uses `re.compile` as a converter. A custom type-converter can be used by passing `converter=...` to either `option()` or `positional()`. Come common utility converters are defined in [converters.py](arcparse/converters.py).
 
 Custom converters may be used in combination with multiple values per argument. These converters are called `itemwise` and need to be wrapped in `itemwise()`. This wrapper is used automatically if an argument is typed as `list[...]` and no converter is set.
 ```py
 from arcparse.converters import sv, csv, sv_dict, itemwise
 from enum import StrEnum
 from re import Pattern
+from typing import Literal
 
 @arcparser
 class Args:
@@ -112,6 +115,7 @@ class Args:
 
     number: int
     result: Result
+    literal: Literal["yes", "no"]
     pattern: Pattern
     custom: Result = option(converter=Result.from_int)
     ints: list[int] = option(converter=csv(int))
@@ -120,12 +124,27 @@ class Args:
     results: list[Result] = option(converter=itemwise(Result.from_int))
 ```
 
+### dict helpers
+Sometimes creating an argument able to choose a value from a dict by its key is desired. `dict_option` and `dict_positional` do exactly that. In the following example passing `--foo yes` will result in `.foo` being `True`.
+```py
+from arcparse import dict_option
+
+values = {
+    "yes": True,
+    "no": False,
+}
+
+@arcparser
+class Args:
+    foo: bool = dict_option(values)
+```
+
 ### Mutually exclusive groups
 Use `mx_group` to group multiple arguments together in a mutually exclusive group. Each argument has to have a default defined either implicitly through the type (being `bool` or a union with `None`) or explicitly with `default`.
 ```py
 @arcparser
 class Args:
-    group = MxGroup()  # alternatively use `(group := MxGroup())` on the next line
+    group = mx_group()  # alternatively use `(group := mx_group())` on the next line
     flag: bool = flag(mx_group=group)
     option: str | None = option(mx_group=group)
 ```

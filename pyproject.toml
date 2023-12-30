@@ -25,10 +25,12 @@ black = "^23.11.0"
 pyright = "^1.1.335"
 pytest = "^7.4.3"
 isort = "^5.12.0"
+ruff = "^0.1.9"
 
 [tool.isort]
 profile = "black"
 from_first = "true"
+lines_after_imports = 2
 
 [build-system]
 requires = ["poetry-core"]

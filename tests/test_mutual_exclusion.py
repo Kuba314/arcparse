@@ -2,13 +2,14 @@ from typing import Any
 
 import pytest
 
-from arcparse import MxGroup, arcparser, flag, option
+from arcparse import arcparser, flag, mx_group, option, subparsers, tri_flag
+from arcparse.errors import InvalidArgument
 
 
 def test_group_as_untyped_attribute() -> None:
     @arcparser
     class Args:
-        group = MxGroup()
+        group = mx_group()
         foo: str | None = option(mx_group=group)
         bar: str | None = option(mx_group=group)
 
@@ -17,29 +18,28 @@ def test_group_as_untyped_attribute() -> None:
 
 def test_group_elements_both_nonoptional() -> None:
     class Args:
-        foo: str = option(mx_group=(group := MxGroup()))
+        foo: str = option(mx_group=(group := mx_group()))
         bar: str = option(mx_group=group)
 
-    # TODO: raise mx-arg-no-default instead of required-arguments error
-    with pytest.raises(Exception):
+    with pytest.raises(InvalidArgument):
         arcparser(Args)
 
 
 def test_group_elements_some_nonoptional() -> None:
     class Args:
-        foo: str = option(mx_group=(group := MxGroup()))
+        foo: str = option(mx_group=(group := mx_group()))
         bar: str | None = option(mx_group=group)
 
-    with pytest.raises(Exception):
+    with pytest.raises(InvalidArgument):
         arcparser(Args)
 
 
 @arcparser
 class Args:
-    foo: str | None = option(mx_group=(option_group := MxGroup()))
+    foo: str | None = option(mx_group=(option_group := mx_group()))
     bar: str | None = option(mx_group=option_group)
 
-    flag1: bool = flag(mx_group=(flag_group := MxGroup()))
+    flag1: bool = flag(mx_group=(flag_group := mx_group()))
     flag2: bool = flag(mx_group=flag_group)
 
 
@@ -66,3 +66,80 @@ def test_mutual_exclusion_valid(string: str, result: dict[str, Any]) -> None:
         args = Args.parse(string.split())
         for k, v in result.items():
             assert getattr(args, k) == v
+
+
+def test_mutual_exclusion_required() -> None:
+    @arcparser
+    class Args:
+        foo: str | None = option(mx_group=(option_group := mx_group(required=True)))
+        bar: str | None = option(mx_group=option_group)
+
+    with pytest.raises(SystemExit):
+        Args.parse("".split())
+
+    parsed = Args.parse("--foo foo".split())
+    assert parsed.foo == "foo"
+    assert parsed.bar is None
+
+    parsed = Args.parse("--bar bar".split())
+    assert parsed.foo is None
+    assert parsed.bar == "bar"
+
+    with pytest.raises(SystemExit):
+        Args.parse("--foo foo --bar bar".split())
+
+
+def test_tri_flag_inside_mx_group() -> None:
+    @arcparser
+    class Args:
+        foo: str | None = option(mx_group=(group := mx_group()))
+        bar: bool | None = tri_flag(mx_group=group)
+
+    parsed = Args.parse("".split())
+    assert parsed.foo is None
+    assert parsed.bar is None
+
+    parsed = Args.parse("--foo foo".split())
+    assert parsed.foo == "foo"
+    assert parsed.bar is None
+
+    parsed = Args.parse("--bar".split())
+    assert parsed.foo is None
+    assert parsed.bar is True
+
+    parsed = Args.parse("--no-bar".split())
+    assert parsed.foo is None
+    assert parsed.bar is False
+
+    with pytest.raises(SystemExit):
+        Args.parse("--foo foo --bar".split())
+
+    with pytest.raises(SystemExit):
+        Args.parse("--foo foo --no-bar".split())
+
+
+def test_tri_flag_inside_subparser() -> None:
+    class FooArgs:
+        foo: str
+
+    class BarArgs:
+        bar: bool | None
+
+    @arcparser
+    class Args:
+        foo_bar: FooArgs | BarArgs = subparsers("foo", "bar")
+
+    parsed = Args.parse("bar".split())
+    assert isinstance(foo_bar := parsed.foo_bar, BarArgs)
+    assert foo_bar.bar is None
+
+    parsed = Args.parse("bar --bar".split())
+    assert isinstance(foo_bar := parsed.foo_bar, BarArgs)
+    assert foo_bar.bar is True
+
+    parsed = Args.parse("bar --no-bar".split())
+    assert isinstance(foo_bar := parsed.foo_bar, BarArgs)
+    assert foo_bar.bar is False
+
+    with pytest.raises(SystemExit):
+        Args.parse("bar --bar --no-bar".split())

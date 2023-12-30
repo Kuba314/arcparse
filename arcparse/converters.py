@@ -16,6 +16,9 @@ class itemwise[T]:
     def __call__(self, string: str) -> list[T]:
         return self._converter(string)  # type: ignore
 
+    def __repr__(self) -> str:
+        return f"itemwise({self._converter})"
+
 
 def sv[T](separator: str, type_: type[T] = str, /) -> Callable[[str], list[T]]:
     def conv(arg: str) -> list[T]:
