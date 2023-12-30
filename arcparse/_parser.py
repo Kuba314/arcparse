@@ -51,7 +51,7 @@ class Parser[T]:
 
 @dataclass
 class RootParser[T]:
-    parser: Parser
+    parser: Parser[T]
     subparsers: tuple[str, Subparsers] | None = None
 
     def parse(self, args: Sequence[str] | None = None) -> T:
