@@ -5,6 +5,7 @@ import re
 import pytest
 
 from arcparse import arcparser, option, positional
+from arcparse.errors import InvalidArgument
 
 
 class Result(StrEnum):
@@ -83,3 +84,24 @@ def test_literal_positional() -> None:
 
     parsed = Args.parse("no".split())
     assert parsed.literal == "no"
+
+    with pytest.raises(SystemExit):
+        Args.parse("maybe".split())
+
+
+def test_literal_choices_subset() -> None:
+    class InvalidArgs:
+        literal: Literal["yes", "no"] = positional(choices={"yes", "no", "maybe"})
+
+    with pytest.raises(InvalidArgument):
+        arcparser(InvalidArgs)
+
+    @arcparser
+    class ValidArgs:
+        literal: Literal["yes", "no"] = positional(choices={"yes"})
+
+    parsed = ValidArgs.parse("yes".split())
+    assert parsed.literal == "yes"
+
+    with pytest.raises(SystemExit):
+        Args.parse("no".split())

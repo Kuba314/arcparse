@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from argparse import Action, _ActionsContainer, _MutuallyExclusiveGroup
-from collections.abc import Callable
+from collections.abc import Callable, Collection
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Literal, Protocol
 
@@ -99,7 +99,7 @@ class TriFlag(ContainerApplicable):
 class BaseValueArgument[T](BaseArgument):
     default: T | str | Void = void
     converter: Callable[[str], T] | None = None
-    choices: list[T] | None = None
+    choices: Collection[T] | None = None
     nargs: Literal["?", "*", "+"] | None = None
     metavar: str | None = None
 

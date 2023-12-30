@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from collections.abc import Callable
+from collections.abc import Callable, Collection
 from dataclasses import dataclass
 from typing import Any, Literal, get_origin
 import re
@@ -19,6 +19,7 @@ from ._arguments import (
 )
 from ._typehints import (
     extract_collection_type,
+    extract_literal_strings,
     extract_optional_type,
     extract_type_from_typehint,
 )
@@ -55,7 +56,7 @@ class BaseSinglePartialArgument[R: ContainerApplicable](BasePartialArgument[R]):
 @dataclass(kw_only=True)
 class BasePartialValueArgument[T, R: BaseValueArgument](BaseSinglePartialArgument[R]):
     default: T | str | Void = void
-    choices: list[str] | None = None
+    choices: Collection[str] | None = None
     converter: Callable[[str], T] | None = None
     name_override: str | None = None
     at_least_one: bool = False
@@ -63,8 +64,8 @@ class BasePartialValueArgument[T, R: BaseValueArgument](BaseSinglePartialArgumen
     def resolve_to_kwargs(self, typehint: type) -> dict[str, Any]:
         kwargs = super().resolve_to_kwargs(typehint)
 
+        type_ = extract_type_from_typehint(typehint)
         if self.converter is None:
-            type_ = extract_type_from_typehint(typehint)
             if type_ is bool:
                 raise InvalidTypehint("Arguments yielding a value cannot be typed as `bool`")
             elif getattr(type_, "_is_protocol", False):
@@ -78,12 +79,19 @@ class BasePartialValueArgument[T, R: BaseValueArgument](BaseSinglePartialArgumen
                 else:
                     self.converter = type_
 
+        choices = self.choices
+        if literal_choices := extract_literal_strings(type_):
+            if self.choices is None:
+                choices = literal_choices
+            elif not (set(self.choices) <= set(literal_choices)):
+                raise InvalidArgument("explicit choices have to be a subset of target literal typehint")
+
         if self.converter is not None:
             kwargs["converter"] = self.converter
         if self.default is not void:
             kwargs["default"] = self.default
-        if self.choices is not None:
-            kwargs["choices"] = self.choices
+        if choices is not None:
+            kwargs["choices"] = choices
 
         if self.need_multiple(typehint) and not self.at_least_one and self.default is void:
             kwargs["default"] = []

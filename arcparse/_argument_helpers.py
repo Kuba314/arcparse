@@ -1,4 +1,4 @@
-from collections.abc import Callable
+from collections.abc import Callable, Collection
 from typing import Any
 
 from ._arguments import Void, void
@@ -16,7 +16,7 @@ from ._partial_arguments import (
 def positional[T](
     *,
     default: T | str | Void = void,
-    choices: list[str] | None = None,
+    choices: Collection[str] | None = None,
     converter: Callable[[str], T] | None = None,
     name_override: str | None = None,
     at_least_one: bool = False,
@@ -39,7 +39,7 @@ def option[T](
     *,
     short_only: bool = False,
     default: T | str | Void = void,
-    choices: list[str] | None = None,
+    choices: Collection[str] | None = None,
     converter: Callable[[str], T] | None = None,
     name_override: str | None = None,
     append: bool = False,
