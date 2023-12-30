@@ -54,6 +54,10 @@ class RootParser[T]:
     parser: Parser[T]
     subparsers: tuple[str, Subparsers] | None = None
 
+    @property
+    def shape(self) -> type[T]:
+        return self.parser.shape
+
     def parse(self, args: Sequence[str] | None = None) -> T:
         ap_parser = argparse.ArgumentParser()
         self.parser.apply(ap_parser)
