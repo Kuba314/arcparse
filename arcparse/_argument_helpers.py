@@ -1,6 +1,8 @@
 from collections.abc import Callable, Collection
 from typing import Any
 
+from arcparse.errors import InvalidArgument
+
 from ._arguments import Void, void
 from ._partial_arguments import (
     PartialFlag,
@@ -98,3 +100,60 @@ def mx_group(*, required: bool = False) -> PartialMxGroup:
 
 def subparsers(*args: str) -> Any:
     return PartialSubparsers(names=list(args))
+
+
+def dict_positional[T](
+    dict_: dict[str, T],
+    *,
+    default: T | Void = void,
+    name_override: str | None = None,
+    at_least_one: bool = False,
+    mx_group: PartialMxGroup | None = None,
+    help: str | None = None,
+) -> T:
+    """Creates positional() from dict by pre-filling choices and converter"""
+
+    if default is not void and default not in dict_.values():
+        raise InvalidArgument("dict_positional default must be a value in dict")
+
+    return positional(
+        default=default,
+        choices=list(dict_.keys()),
+        converter=dict_.__getitem__,
+        name_override=name_override,
+        at_least_one=at_least_one,
+        mx_group=mx_group,
+        help=help,
+    )
+
+
+
+def dict_option[T](
+    dict_: dict[str, T],
+    *,
+    short: str | None = None,
+    short_only: bool = False,
+    default: T | Void = void,
+    name_override: str | None = None,
+    append: bool = False,
+    at_least_one: bool = False,
+    mx_group: PartialMxGroup | None = None,
+    help: str | None = None,
+) -> T:
+    """Creates option() from dict by pre-filling choices and converter"""
+
+    if default is not void and default not in dict_.values():
+        raise InvalidArgument("dict_positional default must be a value in dict")
+
+    return option(
+        short=short,
+        short_only=short_only,
+        default=default,
+        choices=list(dict_.keys()),
+        converter=dict_.__getitem__,
+        name_override=name_override,
+        append=append,
+        at_least_one=at_least_one,
+        mx_group=mx_group,
+        help=help,
+    )

@@ -124,6 +124,21 @@ class Args:
     results: list[Result] = option(converter=itemwise(Result.from_int))
 ```
 
+### dict helpers
+Sometimes creating an argument able to choose a value from a dict by its key is desired. `dict_option` and `dict_positional` do exactly that. In the following example passing `--foo yes` will result in `.foo` being `True`.
+```py
+from arcparse import dict_option
+
+values = {
+    "yes": True,
+    "no": False,
+}
+
+@arcparser
+class Args:
+    foo: bool = dict_option(values)
+```
+
 ### Mutually exclusive groups
 Use `mx_group` to group multiple arguments together in a mutually exclusive group. Each argument has to have a default defined either implicitly through the type (being `bool` or a union with `None`) or explicitly with `default`.
 ```py
