@@ -9,8 +9,8 @@ from ._argument_helpers import (
     subparsers,
     tri_flag,
 )
-from ._parser import InvalidArgument, InvalidParser, InvalidTypehint, arcparser
 from .converters import itemwise
+from .parser import InvalidArgument, InvalidParser, InvalidTypehint, arcparser
 
 
 __all__ = [
