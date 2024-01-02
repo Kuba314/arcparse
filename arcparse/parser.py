@@ -61,6 +61,14 @@ class RootParser[T]:
     def shape(self) -> type[T]:
         return self.parser.shape
 
+    @property
+    def all_arguments(self) -> Iterator[tuple[str, BaseArgument]]:
+        yield from self.parser.all_arguments
+
+        if self.subparsers is not None:
+            for subparser in self.subparsers[1].sub_parsers.values():
+                yield from subparser.all_arguments
+
     def parse(self, args: Sequence[str] | None = None) -> T:
         ap_parser = argparse.ArgumentParser()
         self.parser.apply(ap_parser)
