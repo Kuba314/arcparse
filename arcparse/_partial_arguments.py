@@ -48,9 +48,10 @@ class BaseSinglePartialArgument[R: ContainerApplicable](BasePartialArgument[R]):
     help: str | None = None
 
     def resolve_to_kwargs(self, name: str, typehint: type) -> dict[str, Any]:
-        return super().resolve_to_kwargs(name, typehint) | {
-            "help": self.help,
-        }
+        kwargs = super().resolve_to_kwargs(name, typehint)
+        if self.help is not None:
+            kwargs["help"] = self.help
+        return kwargs
 
 
 @dataclass(kw_only=True)
@@ -93,16 +94,12 @@ class BasePartialValueArgument[T, R: BaseValueArgument](BaseSinglePartialArgumen
         if choices is not None:
             kwargs["choices"] = choices
 
-        if self.need_multiple(typehint) and not self.at_least_one and self.default is void:
+        if extract_optional_type(typehint):
+            kwargs["optional"] = True
+        elif extract_collection_type(typehint) and not self.at_least_one:
             kwargs["default"] = []
 
         return kwargs
-
-    def need_multiple(self, typehint: type) -> bool:
-        return (
-            (self.converter is None and extract_collection_type(typehint) is not None)
-            or isinstance(self.converter, itemwise)
-        )
 
 
 @dataclass
@@ -123,11 +120,9 @@ class PartialPositional[T](BasePartialValueArgument[T, Positional]):
         if self.name_override is not None:
             kwargs["metavar"] = self.name_override
 
-        if self.need_multiple(typehint):
+        if type_is_collection and (self.converter is None or isinstance(self.converter, itemwise)):
             kwargs["nargs"] = "+" if self.at_least_one else "*"
             kwargs["metavar"] = self.name_override
-        elif optional:
-            kwargs["nargs"] = "?"
 
         return kwargs
 
@@ -147,7 +142,7 @@ class PartialOption[T](BasePartialValueArgument[T, Option]):
         kwargs["short"] = self.short
         kwargs["short_only"] = self.short_only
 
-        if self.need_multiple(typehint):
+        if extract_collection_type(typehint) and isinstance(self.converter, itemwise):
             if self.append:
                 kwargs["append"] = True
             else:
@@ -165,10 +160,10 @@ class PartialOption[T](BasePartialValueArgument[T, Option]):
         type_is_optional = bool(extract_optional_type(typehint))
         type_is_collection = bool(extract_collection_type(typehint))
         required = (not (type_is_optional or type_is_collection)) or self.at_least_one
-        if required:
-            if self.mx_group is not None:
-                raise InvalidArgument("Arguments in mutually exclusive group have to have a default")
-            kwargs["required"] = True
+        if not required:
+            kwargs["optional"] = True
+        elif self.mx_group is not None:
+            raise InvalidArgument("Arguments in mutually exclusive group have to have a default")
 
         return kwargs
 

@@ -110,6 +110,7 @@ class BaseValueArgument[T](BaseArgument):
     converter: Callable[[str], T] | None = None
     choices: Collection[T] | None = None
     nargs: Literal["?", "*", "+"] | None = None
+    optional: bool = False
     metavar: str | None = None
 
     def get_argparse_kwargs(self, name: str) -> dict[str, Any]:
@@ -132,6 +133,14 @@ class Positional[T](BaseValueArgument[T]):
     def get_argparse_args(self, name: str) -> list[str]:
         return [name]
 
+    def get_argparse_kwargs(self, name: str) -> dict[str, Any]:
+        kwargs = super().get_argparse_kwargs(name)
+
+        if self.nargs is None and (self.optional or self.default is not void):
+            kwargs["nargs"] = "?"
+
+        return kwargs
+
 
 @dataclass
 class Option[T](BaseValueArgument[T]):
@@ -139,7 +148,6 @@ class Option[T](BaseValueArgument[T]):
     dest: str | None = None
     short: str | None = None
     short_only: bool = False
-    required: bool = False
     append: bool = False
 
     def get_argparse_args(self, name: str) -> list[str]:
@@ -157,7 +165,7 @@ class Option[T](BaseValueArgument[T]):
 
         if self.dest is not None:
             kwargs["dest"] = self.dest
-        if self.required and self.default is void:
+        if not self.optional and self.default is void:
             kwargs["required"] = True
         if self.append:
             kwargs["action"] = "append"
