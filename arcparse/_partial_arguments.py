@@ -6,7 +6,13 @@ import re
 
 from arcparse.errors import InvalidArgument, InvalidTypehint, MissingConverter
 
-from ._arguments import (
+from ._typehints import (
+    extract_collection_type,
+    extract_literal_strings,
+    extract_optional_type,
+    extract_type_from_typehint,
+)
+from .arguments import (
     BaseValueArgument,
     ContainerApplicable,
     Flag,
@@ -16,12 +22,6 @@ from ._arguments import (
     TriFlag,
     Void,
     void,
-)
-from ._typehints import (
-    extract_collection_type,
-    extract_literal_strings,
-    extract_optional_type,
-    extract_type_from_typehint,
 )
 from .converters import itemwise
 

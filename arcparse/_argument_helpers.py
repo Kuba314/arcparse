@@ -3,7 +3,6 @@ from typing import Any
 
 from arcparse.errors import InvalidArgument
 
-from ._arguments import Void, void
 from ._partial_arguments import (
     PartialFlag,
     PartialMxGroup,
@@ -13,6 +12,7 @@ from ._partial_arguments import (
     PartialSubparsers,
     PartialTriFlag,
 )
+from .arguments import Void, void
 
 
 def positional[T](
