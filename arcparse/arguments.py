@@ -157,7 +157,7 @@ class Option[T](BaseValueArgument[T]):
 
         if self.dest is not None:
             kwargs["dest"] = self.dest
-        if self.required:
+        if self.required and self.default is void:
             kwargs["required"] = True
         if self.append:
             kwargs["action"] = "append"

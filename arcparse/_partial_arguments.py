@@ -164,7 +164,7 @@ class PartialOption[T](BasePartialValueArgument[T, Option]):
 
         type_is_optional = bool(extract_optional_type(typehint))
         type_is_collection = bool(extract_collection_type(typehint))
-        required = (not (type_is_optional or type_is_collection) and self.default is void) or self.at_least_one
+        required = (not (type_is_optional or type_is_collection)) or self.at_least_one
         if required:
             if self.mx_group is not None:
                 raise InvalidArgument("Arguments in mutually exclusive group have to have a default")
