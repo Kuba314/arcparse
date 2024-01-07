@@ -1,9 +1,9 @@
-# Arcparse
-Declare program arguments declaratively and type-safely.
+# arcparse
+Declare program arguments type-safely.
 
-This project provides a wrapper around `argparse`. It adds type-safety and allows for more expressive argument parser definitions.
+This project builds on top of `argparse` by adding type-safety and allowing a more expressive argument parser definition.
 
-Disclaimer: This library is young and probably highly unstable. Use at your own risk. Pull requests are welcome.
+Disclaimer: This library is young and relatively unstable. Issues are open and pull requests are welcome!
 
 ## Example usage
 ```py
@@ -13,11 +13,10 @@ from arcparse import arcparser, positional
 class Args:
     name: str = positional()
     age: int
-    hobbies: list[str] = positional()
     happy: bool
 
 
-args = Args.parse("--age 25 Thomas news coffee running --happy".split())
+args = Args.parse("--age 25 --happy Thomas".split())
 print(f"Hi, my name is {args.name}!")
 ```
 
@@ -93,7 +92,7 @@ class Args:
 ```
 
 ### Type conversions
-Automatic type conversions are supported. The type-hint is used in `type=...` in the background (unless it's `str`, which does no conversion). Using a `StrEnum` subclass as a type-hint automatically populates `choices`, using `Literal` also populates choices but does not set converter unlike `StrEnum`. Using a `re.Pattern` typehint automatically uses `re.compile` as a converter. A custom type-converter can be used by passing `converter=...` to either `option()` or `positional()`. Come common utility converters are defined in [converters.py](arcparse/converters.py).
+Automatic type conversions are supported. The type-hint type is used to convert the string argument to the desired type. This is NOT done using argparse's `type=...` because it was causing issues for `dict_option()` and `dict_positional()`. Using a `StrEnum` subclass as a type-hint automatically populates `choices`, using `Literal` also populates choices but does not set converter unlike `StrEnum`. Using a `re.Pattern` typehint automatically uses `re.compile` as a converter. A custom type-converter can be used by passing `converter=...` to either `option()` or `positional()`. Come common utility converters are defined in [converters.py](arcparse/converters.py).
 
 Custom converters may be used in combination with multiple values per argument. These converters are called `itemwise` and need to be wrapped in `itemwise()`. This wrapper is used automatically if an argument is typed as `list[...]` and no converter is set.
 ```py
@@ -125,7 +124,7 @@ class Args:
 ```
 
 ### dict helpers
-Sometimes creating an argument able to choose a value from a dict by its key is desired. `dict_option` and `dict_positional` do exactly that. In the following example passing `--foo yes` will result in `.foo` being `True`.
+Sometimes creating an argument able to choose a value from a dict by its key is desired. `dict_option()` and `dict_positional()` do exactly that. In the following example passing `--foo yes` will result in `.foo` being `True`.
 ```py
 from arcparse import dict_option
 
@@ -144,13 +143,13 @@ Use `mx_group` to group multiple arguments together in a mutually exclusive grou
 ```py
 @arcparser
 class Args:
-    group = mx_group()  # alternatively use `(group := mx_group())` on the next line
+    group = mx_group()  # alternatively use `mx_group=(group := mx_group())` on the next line
     flag: bool = flag(mx_group=group)
     option: str | None = option(mx_group=group)
 ```
 
 ### Subparsers
-Type-hinting an argument as a union of ArcParser subclasses creates subparsers in the background. Assigning from `subparsers()` gives them names as they will be entered from the command-line. Subparsers are required by default. Adding `None` to the union makes the subparsers optional.
+Type-hinting an argument as a union of classes creates subparsers from them in the background. Assigning from `subparsers()` gives them names as they will be entered from the command-line. Subparsers are required by default. Adding `None` to the union makes the subparsers optional.
 ```py
 class FooArgs:
     arg1: str
@@ -179,7 +178,6 @@ if isinstance(foo := args.action, FooArgs):
 elif isinstance(bar := args.action, BarArgs):
     print(f"bar {bar.arg2}")
 ```
-Be aware that even though the `isinstance()` check passes, the instantiated subparser objects are never actual instances of their class because a dynamically created `dataclass` is used instead. The `isinstance()` relation is faked using a metaclass overriding `__instancecheck__()`.
 
 ## Credits
 This project was inspired by [swansonk14/typed-argument-parser](https://github.com/swansonk14/typed-argument-parser).
