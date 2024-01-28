@@ -63,8 +63,10 @@ class Flag(BaseArgument):
     def get_argparse_args(self, name: str) -> list[str]:
         args = [f"--{name.replace("_", "-")}"]
         if self.short_only:
-            assert self.short is not None
-            return [self.short]
+            if self.short is not None:
+                return [self.short]
+            else:
+                return [f"-{name}"]
         elif self.short is not None:
             args.insert(0, self.short)
 
@@ -153,8 +155,10 @@ class Option[T](BaseValueArgument[T]):
     def get_argparse_args(self, name: str) -> list[str]:
         args = [f"--{(self.name or name).replace("_", "-")}"]
         if self.short_only:
-            assert self.short is not None
-            return [self.short]
+            if self.short is not None:
+                return [self.short]
+            else:
+                return [f"-{self.name or name}"]
         elif self.short is not None:
             args.insert(0, self.short)
 

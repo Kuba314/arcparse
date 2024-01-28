@@ -134,6 +134,9 @@ class PartialOption[T](BasePartialValueArgument[T, Option]):
     append: bool = False
 
     def resolve_with_typehint(self, name: str, typehint: type) -> Option:
+        if self.short_only and self.short is None and len(name) > 1:
+            raise InvalidArgument(f"Argument \"{name}\" requested short_only but name is longer than 1 character and no short-hand was specified")
+
         kwargs = self.resolve_to_kwargs(name, typehint)
         return Option(**kwargs)
 
@@ -152,7 +155,7 @@ class PartialOption[T](BasePartialValueArgument[T, Option]):
             kwargs["name"] = self.name_override
             kwargs["dest"] = name
             kwargs["metavar"] = self.name_override.replace("-", "_").upper()
-        elif self.short_only:
+        elif self.short_only and self.short is not None:
             kwargs["dest"] = name
         else:
             kwargs["name"] = name
@@ -174,6 +177,9 @@ class PartialFlag(BaseSinglePartialArgument[Flag]):
     short_only: bool = False
 
     def resolve_with_typehint(self, name: str, typehint: type) -> Flag:
+        if self.short_only and self.short is None and len(name) > 1:
+            raise InvalidArgument(f"Argument \"{name}\" requested short_only but name is longer than 1 character and no short-hand was specified")
+
         kwargs = self.resolve_to_kwargs(name, typehint)
         kwargs["short"] = self.short
         kwargs["short_only"] = self.short_only

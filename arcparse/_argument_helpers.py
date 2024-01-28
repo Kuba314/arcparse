@@ -1,5 +1,6 @@
 from collections.abc import Callable, Collection
 from typing import Any
+import re
 
 from arcparse.errors import InvalidArgument
 
@@ -13,6 +14,11 @@ from ._partial_arguments import (
     PartialTriFlag,
 )
 from .arguments import Void, void
+
+
+def _check_short_format(short: str) -> None:
+    if not re.match(r"^-[^-]$", short):
+        raise InvalidArgument("Invalid argument short-hand \"{}\", expected a dash followed by a single character")
 
 
 def positional[T](
@@ -49,8 +55,8 @@ def option[T](
     mx_group: PartialMxGroup | None = None,
     help: str | None = None,
 ) -> T:
-    if short_only and short is None:
-        raise ValueError("`short_only` cannot be True if `short` is not provided")
+    if short is not None:
+        _check_short_format(short)
 
     if short_only and name_override is not None:
         raise ValueError("`short_only` cannot be True if `name_override` is provided")
@@ -79,8 +85,9 @@ def flag(
     mx_group: PartialMxGroup | None = None,
     help: str | None = None,
 ) -> bool:
-    if short_only and short is None:
-        raise ValueError("`short_only` cannot be True if `short` is not provided")
+    if short is not None:
+        _check_short_format(short)
+
     return PartialFlag(
         short=short,
         short_only=short_only,
