@@ -1,0 +1,30 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v2.3.0
+    hooks:
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: no-commit-to-branch
+        args: ["--branch", "master", "--branch", "main"]
+  - repo: local
+    hooks:
+    - id: ruff
+      name: ruff
+      language: system
+      entry: poetry run ruff check
+      types: [python]
+    - id: isort
+      name: isort
+      language: system
+      entry: poetry run isort --check --diff
+      types: [python]
+    - id: pyright
+      name: pyright
+      language: system
+      entry: poetry run pyright
+      types: [python]
+    - id: pytest
+      name: pytest
+      language: system
+      entry: poetry run pytest
+      pass_filenames: false
