@@ -62,7 +62,7 @@ def option[T](
         raise InvalidArgument("`short_only` cannot be True if `name_override` is provided")
 
     if append and at_least_one:
-        raise ValueError("`append` is incompatible with `at_least_one`")
+        raise InvalidArgument("`append` is incompatible with `at_least_one`")
 
     return PartialOption(
         short=short,
