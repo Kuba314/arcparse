@@ -59,7 +59,7 @@ def option[T](
         _check_short_format(short)
 
     if short_only and name_override is not None:
-        raise ValueError("`short_only` cannot be True if `name_override` is provided")
+        raise InvalidArgument("`short_only` cannot be True if `name_override` is provided")
 
     if append and at_least_one:
         raise ValueError("`append` is incompatible with `at_least_one`")
