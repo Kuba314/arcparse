@@ -11,12 +11,14 @@ class Args:
     bar: None | str
     baz: str = option("-z", short_only=True, default="123")
     boo: Optional[str]
+    c: str = option(short_only=True, default="123")
 
 
 defaults = {
     "bar": None,
     "baz": "123",
     "boo": None,
+    "c": "123",
 }
 
 
@@ -28,6 +30,7 @@ defaults = {
         ("--foo A --bar B", {"foo": "A", "bar": "B"}),
         ("--foo A --bar B -z C", {"foo": "A", "bar": "B", "baz": "C"}),
         ("--foo A -z C --boo D", {"foo": "A", "baz": "C", "boo": "D"}),
+        ("--foo A -c B", {"foo": "A", "c": "B"}),
     ]
 )
 def test_option_valid(arg_string: str, provided: dict[str, Any]) -> None:

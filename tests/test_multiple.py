@@ -1,6 +1,7 @@
 import pytest
 
 from arcparse import arcparser, option, positional
+from arcparse.errors import InvalidArgument
 
 
 @pytest.mark.parametrize(
@@ -94,3 +95,8 @@ def test_opt_append(string: str, result: list[int]) -> None:
 
     args = Args.parse(string.split())
     assert args.values == result
+
+
+def test_multiple_invalid() -> None:
+    with pytest.raises(InvalidArgument):
+        option(append=True, at_least_one=True)

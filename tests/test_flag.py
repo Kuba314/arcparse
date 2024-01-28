@@ -11,6 +11,7 @@ class Args:
     bar: bool = no_flag()
     baz: bool = flag(short="-z")
     boo: bool = flag(short="-o", short_only=True)
+    c: bool = flag(short_only=True)
 
 
 defaults = {
@@ -18,6 +19,7 @@ defaults = {
     "bar": True,
     "baz": False,
     "boo": False,
+    "c": False,
 }
 
 
@@ -29,6 +31,7 @@ defaults = {
         ("--baz", {"baz": True}),
         ("-z", {"baz": True}),
         ("-o", {"boo": True}),
+        ("-c", {"c": True}),
     ]
 )
 def test_flag_valid(arg_string: str, provided: dict[str, Any]) -> None:
