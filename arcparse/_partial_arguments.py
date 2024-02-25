@@ -118,7 +118,8 @@ class PartialPositional[T](BasePartialValueArgument[T, Positional]):
             raise InvalidArgument("Arguments in mutually exclusive group have to have a default")
 
         if self.name_override is not None:
-            kwargs["metavar"] = self.name_override
+            if self.choices is None:  # choices generate custom `{foo,bar}` metavar in argparse
+                kwargs["metavar"] = self.name_override
 
         if type_is_collection and (self.converter is None or isinstance(self.converter, itemwise)):
             kwargs["nargs"] = "+" if self.at_least_one else "*"
@@ -154,7 +155,8 @@ class PartialOption[T](BasePartialValueArgument[T, Option]):
         if self.name_override is not None:
             kwargs["name"] = self.name_override
             kwargs["dest"] = name
-            kwargs["metavar"] = self.name_override.replace("-", "_").upper()
+            if self.choices is None:  # choices generate custom `{foo,bar}` metavar in argparse
+                kwargs["metavar"] = self.name_override.replace("-", "_").upper()
         elif self.short_only and self.short is not None:
             kwargs["dest"] = name
         else:
