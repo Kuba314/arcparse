@@ -18,7 +18,7 @@ from .arguments import Void, void
 
 def _check_short_format(short: str) -> None:
     if not re.match(r"^-[^-]$", short):
-        raise InvalidArgument("Invalid argument short-hand \"{}\", expected a dash followed by a single character")
+        raise InvalidArgument(f"Invalid argument short-hand \"{}\", expected a dash followed by a single character")
 
 
 def positional[T](
