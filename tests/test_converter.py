@@ -3,18 +3,21 @@ from enum import StrEnum, auto
 import pytest
 
 from arcparse import arcparser, itemwise, option
+from arcparse.arguments import Option
 from arcparse.converters import csv
 
 
-def test_itemwise() -> None:
-    class Result(StrEnum):
-        PASS = auto()
-        FAIL = auto()
+class Result(StrEnum):
+    PASS = auto()
+    FAIL = auto()
 
-        @classmethod
-        def from_int(cls, arg: str) -> "Result":
-            number = int(arg)
-            return cls.PASS if number == 1 else cls.FAIL
+    @classmethod
+    def from_int(cls, arg: str) -> "Result":
+        number = int(arg)
+        return cls.PASS if number == 1 else cls.FAIL
+
+
+def test_itemwise() -> None:
 
     # @arcparser
     class Xd:
@@ -43,3 +46,14 @@ def test_csv(string: str, attr: str, expected: list[str]) -> None:
 
     args = Args.parse(string.split())
     assert getattr(args, attr) == expected
+
+
+def test_enum_choices() -> None:
+    @arcparser
+    class Args:
+        result: Result
+
+    args = dict(Args.all_arguments)
+    arg = args["result"]
+    assert isinstance(arg, Option)
+    assert arg.choices == {"pass", "fail"}

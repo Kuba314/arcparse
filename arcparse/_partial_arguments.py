@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Collection
 from dataclasses import dataclass
+from enum import StrEnum
 from typing import Any, Literal, get_origin
 import re
 
@@ -77,6 +78,8 @@ class BasePartialValueArgument[T, R: BaseValueArgument](BaseSinglePartialArgumen
                     self.converter = itemwise(type_)  # type: ignore (list[T@itemwise] somehow incompatible with T@_BaseValueArgument)
                 elif type_ == re.Pattern:
                     self.converter = re.compile  # type: ignore (somehow incompatible)
+                elif issubclass(type_, StrEnum):
+                    self.choices = set(map(str, type_))
                 else:
                     self.converter = type_
 
