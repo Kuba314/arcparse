@@ -6,7 +6,7 @@ from arcparse.errors import InvalidArgument
 
 def test_short_option_invalid() -> None:
     with pytest.raises(InvalidArgument):
-        option("-fo")
+        option("-fo-o")
 
     with pytest.raises(InvalidArgument):
         @arcparser
@@ -16,7 +16,7 @@ def test_short_option_invalid() -> None:
 
 def test_short_flag_invalid() -> None:
     with pytest.raises(InvalidArgument):
-        flag("-fo")
+        flag("-fo-o")
 
     with pytest.raises(InvalidArgument):
         @arcparser
