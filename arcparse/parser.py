@@ -118,9 +118,9 @@ def _construct_object_with_parsed[T](parser: Parser[T], parsed: dict[str, Any]) 
 
 def _instantiate_from_dict[T](cls: type[T], dict_: dict[str, Any]) -> T:
     values = {}
-    annotations = inspect.get_annotations(cls, eval_str=True)
-    for name in annotations.keys():
-        values[name] = dict_.pop(name)
+    for _cls in cls.__mro__:
+        for name in inspect.get_annotations(_cls, eval_str=True).keys():
+            values[name] = dict_.pop(name)
 
     obj = cls()
     obj.__dict__ = values
@@ -147,11 +147,12 @@ def _collect_partial_arguments(cls: type) -> dict[str, tuple[type, BasePartialAr
     # collect declared typehints
     all_params: dict[str, tuple[type, Any]] = {
         name: (typehint, void)
-        for name, typehint in inspect.get_annotations(cls, eval_str=True).items()
+        for _cls in reversed(cls.__mro__)
+        for name, typehint in inspect.get_annotations(_cls, eval_str=True).items()
     }
 
     # collect declared defaults
-    for key, value in vars(cls).items():
+    for key, value in {k: v for _cls in cls.__mro__ for k, v in vars(_cls).items()}.items():
         # skip methods, properties and dunder attributes
         if callable(value) or isinstance(value, property) or (key.startswith("__") and key.endswith("__")):
             continue

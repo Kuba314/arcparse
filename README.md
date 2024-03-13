@@ -179,6 +179,26 @@ elif isinstance(bar := args.action, BarArgs):
     print(f"bar {bar.arg2}")
 ```
 
+### Parser inheritance
+Parsers can inherit arguments from other parsers. This is useful if there are common arguments among multiple subparsers. Note that current implementation disallows inheriting directly from classes already wrapped by `@arcparser`, inherit from `ClassAlreadySubparsered.shape` instead (if `Common` was wrapped in `@arcparser`, inherit from `Common.shape`).
+
+```py
+class Common:
+    debug: bool
+
+class FooArgs(Common):
+    foo: bool
+
+class BarArgs(Common):
+    bar: bool
+
+@arcparser
+class Args:
+    action: FooArgs | BarArgs = subparsers("foo", "bar")
+
+args = Args.parse("foo --debug".split())
+```
+
 ## Credits
 This project was inspired by [swansonk14/typed-argument-parser](https://github.com/swansonk14/typed-argument-parser).
 
