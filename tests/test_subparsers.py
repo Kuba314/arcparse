@@ -86,3 +86,30 @@ def test_only_one_subparsers() -> None:
 
     with pytest.raises(InvalidParser):
         arcparser(Args)
+
+
+def test_nested_subparsers() -> None:
+    class Bar:
+        bar: bool
+
+    class Baz:
+        baz: bool
+
+    class BarBaz:
+        bar_or_baz: Bar | Baz = subparsers("bar", "baz")
+
+    class Boo:
+        boo: bool
+
+    @arcparser
+    class Args:
+        barbaz_or_boo: BarBaz | Boo = subparsers("barbaz", "boo")
+
+    parsed = Args.parse("barbaz bar --bar".split())
+    assert isinstance(barbaz := parsed.barbaz_or_boo,  BarBaz) and isinstance(bar := barbaz.bar_or_baz, Bar) and bar.bar
+
+    parsed = Args.parse("barbaz baz --baz".split())
+    assert isinstance(barbaz := parsed.barbaz_or_boo,  BarBaz) and isinstance(baz := barbaz.bar_or_baz, Baz) and baz.baz
+
+    parsed = Args.parse("boo --boo".split())
+    assert isinstance(boo := parsed.barbaz_or_boo,  Boo) and boo.boo
