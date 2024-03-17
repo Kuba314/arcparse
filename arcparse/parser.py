@@ -81,6 +81,8 @@ class Parser[T]:
 
             # optional subparsers will result in `dict[name]` being `None`
             if chosen_subparser := parsed.get(name):
+                if chosen_subparser not in subparsers.sub_parsers:
+                    raise InvalidParser(f"`{self.shape.__name__}.{name}` was overriden by argument/subparser with same name, got \"{chosen_subparser}\" but should be one of {set(subparsers.sub_parsers.keys())}")
                 sub_parser = subparsers.sub_parsers[chosen_subparser]
                 parsed[name] = sub_parser._construct_object_with_parsed(parsed)
 

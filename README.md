@@ -150,6 +150,8 @@ class Args:
 
 ### Subparsers
 Type-hinting an argument as a union of classes creates subparsers from them in the background. Assigning from `subparsers()` gives them names as they will be entered from the command-line. Subparsers are required by default. Adding `None` to the union makes the subparsers optional.
+
+When nesting subparsers, avoid giving your subparsers the same name (e.g. `action`). `argparse` doesn't seem able to differentiate between different subparser levels with the same name. This applies to arguments as well -- arguments deeper in the subparser tree will overwrite arguments with the same name being closer to the root.
 ```py
 class FooArgs:
     arg1: str
