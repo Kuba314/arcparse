@@ -27,7 +27,7 @@ from .arguments import (
 from .errors import InvalidArgument, InvalidParser, InvalidTypehint
 
 
-__all__ = ["Parser", "RootParser"]
+__all__ = ["Parser"]
 
 
 @dataclass
@@ -35,6 +35,7 @@ class Parser[T]:
     shape: type[T]
     arguments: dict[str, BaseArgument] = field(default_factory=dict)
     mx_groups: list[MxGroup] = field(default_factory=list)
+    subparsers: tuple[str, Subparsers] | None = None
 
     @property
     def all_arguments(self) -> Iterator[tuple[str, BaseArgument]]:
@@ -42,36 +43,31 @@ class Parser[T]:
         for mx_group in self.mx_groups:
             yield from mx_group.arguments.items()
 
-    def apply(self, actions_container: argparse._ActionsContainer) -> None:
-        for name, argument in self.arguments.items():
-            argument.apply(actions_container, name)
-
-        for mx_group in self.mx_groups:
-            group = actions_container.add_mutually_exclusive_group(required=mx_group.required)
-            for name, argument in mx_group.arguments.items():
-                argument.apply(group, name)
-
-
-@dataclass
-class RootParser[T]:
-    parser: Parser[T]
-    subparsers: tuple[str, Subparsers] | None = None
-
-    @property
-    def shape(self) -> type[T]:
-        return self.parser.shape
-
-    @property
-    def all_arguments(self) -> Iterator[tuple[str, BaseArgument]]:
-        yield from self.parser.all_arguments
-
         if self.subparsers is not None:
             for subparser in self.subparsers[1].sub_parsers.values():
                 yield from subparser.all_arguments
 
     def parse(self, args: Sequence[str] | None = None) -> T:
         ap_parser = argparse.ArgumentParser()
-        self.parser.apply(ap_parser)
+        self.apply(ap_parser)
+
+        parsed = ap_parser.parse_args(args).__dict__
+
+        # reduce tri_flags
+        tri_flag_names = [name for name, arg in self.all_arguments if isinstance(arg, TriFlag)]
+        _reduce_tri_flags(parsed, tri_flag_names)
+
+        return self._construct_object_with_parsed(parsed)
+
+    def apply(self, ap_parser: argparse.ArgumentParser) -> None:
+        for name, argument in self.arguments.items():
+            argument.apply(ap_parser, name)
+
+        for mx_group in self.mx_groups:
+            group = ap_parser.add_mutually_exclusive_group(required=mx_group.required)
+            for name, argument in mx_group.arguments.items():
+                argument.apply(group, name)
+
         if self.subparsers is not None:
             name, subparsers = self.subparsers
             ap_subparsers = ap_parser.add_subparsers(dest=name, required=subparsers.required)
@@ -79,41 +75,31 @@ class RootParser[T]:
                 ap_subparser = ap_subparsers.add_parser(name)
                 subparser.apply(ap_subparser)
 
-        parsed = ap_parser.parse_args(args)
-
-        ret = parsed.__dict__
+    def _construct_object_with_parsed(self, parsed: dict[str, Any]) -> T:
         if self.subparsers is not None:
             name, subparsers = self.subparsers
 
             # optional subparsers will result in `dict[name]` being `None`
-            if chosen_subparser := getattr(parsed, name, None):
+            if chosen_subparser := parsed.get(name):
                 sub_parser = subparsers.sub_parsers[chosen_subparser]
-                ret[name] = _construct_object_with_parsed(sub_parser, ret)
+                parsed[name] = sub_parser._construct_object_with_parsed(parsed)
 
-        return _construct_object_with_parsed(self.parser, ret)
+        # apply argument converters
+        for name, argument in self.all_arguments:
+            if not isinstance(argument, BaseValueArgument) or argument.converter is None:
+                continue
 
+            value = parsed.get(name, argument.default)
+            if isinstance(argument.converter, itemwise):
+                assert isinstance(value, list)
+                parsed[name] = [
+                    argument.converter(item) if isinstance(item, str) else item
+                    for item in value
+                ]
+            else:
+                parsed[name] = argument.converter(value) if isinstance(value, str) else value
 
-def _construct_object_with_parsed[T](parser: Parser[T], parsed: dict[str, Any]) -> T:
-    # apply argument converters
-    for name, argument in parser.all_arguments:
-        if not isinstance(argument, BaseValueArgument) or argument.converter is None:
-            continue
-
-        value = parsed.get(name, argument.default)
-        if isinstance(argument.converter, itemwise):
-            assert isinstance(value, list)
-            parsed[name] = [
-                argument.converter(item) if isinstance(item, str) else item
-                for item in value
-            ]
-        else:
-            parsed[name] = argument.converter(value) if isinstance(value, str) else value
-
-    # reduce tri_flags
-    tri_flag_names = [name for name, arg in parser.all_arguments if isinstance(arg, TriFlag)]
-    _reduce_tri_flags(parsed, tri_flag_names)
-
-    return _instantiate_from_dict(parser.shape, parsed)
+        return _instantiate_from_dict(self.shape, parsed)
 
 
 def _instantiate_from_dict[T](cls: type[T], dict_: dict[str, Any]) -> T:
@@ -208,6 +194,7 @@ def _collect_subparsers(shape: type) -> tuple[str, type, PartialSubparsers] | No
 
 
 def _make_parser[T](shape: type[T]) -> Parser[T]:
+    # collect arguments and groups
     arguments = {}
     mx_groups: dict[PartialMxGroup, MxGroup] = {}
     for name, (typehint, partial_argument) in _collect_partial_arguments(shape).items():
@@ -221,14 +208,7 @@ def _make_parser[T](shape: type[T]) -> Parser[T]:
                 mx_groups[mx_group] = MxGroup(required=mx_group.required)
             mx_groups[mx_group].arguments[name] = argument
 
-    return Parser(
-        shape,
-        arguments,
-        list(mx_groups.values()),
-    )
-
-
-def _make_root_parser[T](shape: type[T]) -> RootParser[T]:
+    # collect subparsers
     match _collect_subparsers(shape):
         case (name, typehint, partial_subparsers):
             subshapes = extract_subparsers_from_typehint(typehint)
@@ -240,11 +220,13 @@ def _make_root_parser[T](shape: type[T]) -> RootParser[T]:
         case _:
             subparsers = None
 
-    return RootParser(
-        _make_parser(shape),
+    return Parser(
+        shape,
+        arguments,
+        list(mx_groups.values()),
         subparsers,
     )
 
 
-def arcparser[T](shape: type[T]) -> RootParser[T]:
-    return _make_root_parser(shape)
+def arcparser[T](shape: type[T]) -> Parser[T]:
+    return _make_parser(shape)
