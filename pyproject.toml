@@ -21,11 +21,11 @@ packages = [
 python = "^3.12"
 
 [tool.poetry.group.dev.dependencies]
-black = "^23.11.0"
+black = "^24.3.0"
 pyright = "^1.1.335"
 pytest = "^7.4.3"
 isort = "^5.12.0"
-ruff = "^0.1.9"
+ruff = "^0.3.4"
 
 [tool.isort]
 profile = "black"

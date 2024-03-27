@@ -31,7 +31,7 @@ void = Void()
 
 
 class ContainerApplicable(Protocol):
-    def apply(self, actions_container: _ActionsContainer, name: str) -> Action:
+    def apply(self, actions_container: _ActionsContainer, name: str) -> None:
         ...
 
 
@@ -39,10 +39,10 @@ class ContainerApplicable(Protocol):
 class BaseArgument(ABC, ContainerApplicable):
     help: str | None = None
 
-    def apply(self, actions_container: _ActionsContainer, name: str) -> Action:
+    def apply(self, actions_container: _ActionsContainer, name: str) -> None:
         args = self.get_argparse_args(name)
         kwargs = self.get_argparse_kwargs(name)
-        return actions_container.add_argument(*args, **kwargs)
+        actions_container.add_argument(*args, **kwargs)
 
     @abstractmethod
     def get_argparse_args(self, name: str) -> list[str]:
