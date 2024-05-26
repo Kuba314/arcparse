@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from argparse import Action, _ActionsContainer, _MutuallyExclusiveGroup
+from argparse import _ActionsContainer, _MutuallyExclusiveGroup
 from collections.abc import Callable, Collection
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Literal, Protocol
