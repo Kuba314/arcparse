@@ -31,7 +31,7 @@ def csv[T](type_: type[T] = str, /) -> Callable[[str], list[T]]:
     return sv(",", type_)
 
 
-def sv_dict[K, V](item_separator: str, key_value_separator: str, *, key_type: type[K] = str, value_type: type[V] = str) -> Callable[[str], dict[K, V]]:
+def sv_dict[K, V](item_separator: str, key_value_separator: str, *, key_type: Callable[[str], K] = str, value_type: Callable[[str], V] = str) -> Callable[[str], dict[K, V]]:
     def conv(arg: str) -> dict[K, V]:
         items = arg.split(item_separator)
         d = {}
