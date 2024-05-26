@@ -9,6 +9,8 @@ from arcparse import arcparser, flag, no_flag, tri_flag
 class Args:
     foo: bool
     bar: bool = no_flag()
+    barr: bool = no_flag("-B")
+    barrr: bool = no_flag("-R", short_only=True)
     baz: bool = flag(short="-z")
     boo: bool = flag(short="-o", short_only=True)
     c: bool = flag(short_only=True)
@@ -17,6 +19,8 @@ class Args:
 defaults = {
     "foo": False,
     "bar": True,
+    "barr": True,
+    "barrr": True,
     "baz": False,
     "boo": False,
     "c": False,
@@ -28,6 +32,9 @@ defaults = {
     [
         ("--foo", {"foo": True}),
         ("--no-bar", {"bar": False}),
+        ("--no-barr", {"barr": False}),
+        ("-B", {"barr": False}),
+        ("-R", {"barrr": False}),
         ("--baz", {"baz": True}),
         ("-z", {"baz": True}),
         ("-o", {"boo": True}),
@@ -45,6 +52,8 @@ def test_flag_valid(arg_string: str, provided: dict[str, Any]) -> None:
     "arg_string",
     [
         "--bar",
+        "--barr",
+        "--no-barrr",
         "--no-foo",
         "--boo",
     ]

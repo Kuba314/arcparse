@@ -59,9 +59,14 @@ class BaseArgument(ABC, ContainerApplicable):
 class Flag(BaseArgument):
     short: str | None = None
     short_only: bool = False
+    no_flag: bool = False
 
     def get_argparse_args(self, name: str) -> list[str]:
-        args = [f"--{name.replace("_", "-")}"]
+        if self.no_flag:
+            args = [f"--no-{name.replace("_", "-")}"]
+        else:
+            args = [f"--{name.replace("_", "-")}"]
+
         if self.short_only:
             if self.short is not None:
                 return [self.short]
@@ -74,21 +79,7 @@ class Flag(BaseArgument):
 
     def get_argparse_kwargs(self, name: str) -> dict[str, Any]:
         kwargs = super().get_argparse_kwargs(name)
-        kwargs["action"] = "store_true"
-
-        if self.short_only:
-            kwargs["dest"] = name
-        return kwargs
-
-
-@dataclass
-class NoFlag(BaseArgument):
-    def get_argparse_args(self, name: str) -> list[str]:
-        return [f"--no-{name.replace("_", "-")}"]
-
-    def get_argparse_kwargs(self, name: str) -> dict[str, Any]:
-        kwargs = super().get_argparse_kwargs(name)
-        kwargs["action"] = "store_false"
+        kwargs["action"] = "store_true" if not self.no_flag else "store_false"
 
         kwargs["dest"] = name
         return kwargs

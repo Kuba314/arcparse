@@ -17,7 +17,6 @@ from .arguments import (
     BaseValueArgument,
     ContainerApplicable,
     Flag,
-    NoFlag,
     Option,
     Positional,
     TriFlag,
@@ -180,6 +179,7 @@ class PartialOption[T](BasePartialValueArgument[T, Option]):
 class PartialFlag(BaseSinglePartialArgument[Flag]):
     short: str | None = None
     short_only: bool = False
+    no_flag: bool = False
 
     def resolve_with_typehint(self, name: str, typehint: type) -> Flag:
         if self.short_only and self.short is None and len(name) > 1:
@@ -188,14 +188,8 @@ class PartialFlag(BaseSinglePartialArgument[Flag]):
         kwargs = self.resolve_to_kwargs(name, typehint)
         kwargs["short"] = self.short
         kwargs["short_only"] = self.short_only
+        kwargs["no_flag"] = self.no_flag
         return Flag(**kwargs)
-
-
-@dataclass
-class PartialNoFlag(BaseSinglePartialArgument[NoFlag]):
-    def resolve_with_typehint(self, name: str, typehint: type) -> NoFlag:
-        kwargs = self.resolve_to_kwargs(name, typehint)
-        return NoFlag(**kwargs)
 
 
 class PartialTriFlag(BasePartialArgument[TriFlag]):

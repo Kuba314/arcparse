@@ -7,7 +7,6 @@ from arcparse.errors import InvalidArgument
 from ._partial_arguments import (
     PartialFlag,
     PartialMxGroup,
-    PartialNoFlag,
     PartialOption,
     PartialPositional,
     PartialSubparsers,
@@ -96,8 +95,23 @@ def flag(
     )  # type: ignore
 
 
-def no_flag(*, mx_group: PartialMxGroup | None = None, help: str | None = None) -> bool:
-    return PartialNoFlag(mx_group=mx_group, help=help)  # type: ignore
+def no_flag(
+    short: str | None = None,
+    *,
+    short_only: bool = False,
+    mx_group: PartialMxGroup | None = None,
+    help: str | None = None,
+) -> bool:
+    if short is not None:
+        _check_short_format(short)
+
+    return PartialFlag(
+        short=short,
+        short_only=short_only,
+        no_flag=True,
+        help=help,
+        mx_group=mx_group,
+    )  # type: ignore
 
 
 def tri_flag(mx_group: PartialMxGroup | None = None) -> bool | None:
