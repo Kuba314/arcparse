@@ -1,7 +1,7 @@
 from collections.abc import Iterator, Sequence
 from dataclasses import dataclass, field
-from types import NoneType, UnionType
-from typing import Any, Union, get_args, get_origin
+from types import NoneType
+from typing import Any
 import argparse
 import inspect
 
@@ -159,11 +159,6 @@ def _collect_partial_arguments(cls: type) -> dict[str, tuple[type, BasePartialAr
     for name, (typehint, value) in all_params.items():
         if isinstance(value, PartialSubparsers):
             continue
-
-        if get_origin(typehint) in {Union, UnionType}:
-            union_args = get_args(typehint)
-            if len(union_args) > 2 or NoneType not in union_args:
-                raise InvalidTypehint("Union can be used only for optional arguments (length of 2, 1 of them being None)")
 
         if isinstance(value, BasePartialArgument):
             argument = value

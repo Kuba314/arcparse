@@ -57,3 +57,21 @@ def test_enum_choices() -> None:
     arg = args["result"]
     assert isinstance(arg, Option)
     assert arg.choices == {"pass", "fail"}
+
+
+def test_union_with_converter_valid() -> None:
+    def try_parse_int(string: str) -> str | int:
+        try:
+            return int(string)
+        except ValueError:
+            return string
+
+    @arcparser
+    class Args:
+        value: str | int = option(converter=try_parse_int)
+
+    args = Args.parse("--value foo".split())
+    assert args.value == "foo"
+
+    args = Args.parse("--value 123".split())
+    assert args.value == 123

@@ -2,7 +2,8 @@ from abc import ABC, abstractmethod
 from collections.abc import Callable, Collection
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Any, Literal, get_origin
+from types import NoneType, UnionType
+from typing import Any, Literal, Union, get_args, get_origin
 import re
 
 from arcparse.errors import InvalidArgument, InvalidTypehint, MissingConverter
@@ -71,6 +72,10 @@ class BasePartialValueArgument[T, R: BaseValueArgument](BaseSinglePartialArgumen
                 raise InvalidTypehint("Arguments yielding a value cannot be typed as `bool`")
             elif getattr(type_, "_is_protocol", False):
                 raise MissingConverter("Argument with no converter can't be typed as a Protocol subclass")
+            if get_origin(typehint) in {Union, UnionType}:
+                union_args = get_args(typehint)
+                if len(union_args) > 2 or NoneType not in union_args:
+                    raise InvalidTypehint("Union can be used only for optional arguments (length of 2, 1 of them being None)")
 
             if type_ is not str and get_origin(type_) != Literal:
                 if extract_collection_type(typehint):
