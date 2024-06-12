@@ -181,6 +181,8 @@ elif isinstance(bar := args.action, BarArgs):
     print(f"bar {bar.arg2}")
 ```
 
+Each subparser class can define methods which (if defined for all subparsers) will become available on the result. The previous `isinstance()` if statements behaviour could be moved to a method of each subparser and the method could be simply called by calling `args.action.my_method()`.
+
 ### Parser inheritance
 Parsers can inherit arguments from other parsers. This is useful if there are common arguments among multiple subparsers. Note that current implementation disallows inheriting directly from classes already wrapped by `@arcparser`, inherit from `ClassAlreadySubparsered.shape` instead (if `Common` was wrapped in `@arcparser`, inherit from `Common.shape`).
 

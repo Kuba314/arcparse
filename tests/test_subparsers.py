@@ -3,7 +3,7 @@ from typing import Any
 
 import pytest
 
-from arcparse import arcparser, positional, subparsers
+from arcparse import arcparser, flag, positional, subparsers
 from arcparse.errors import InvalidParser
 
 
@@ -113,3 +113,30 @@ def test_nested_subparsers() -> None:
 
     parsed = Args.parse("boo --boo".split())
     assert isinstance(boo := parsed.barbaz_or_boo,  Boo) and boo.boo
+
+
+def test_subparser_actions() -> None:
+    class AddAction:
+        name: str
+
+        def act(self) -> str:
+            return self.name
+
+    class ListAction:
+        all: bool = flag("-a", help="list all")
+
+        def act(self) -> str:
+            return str(self.all)
+
+    @arcparser
+    class Args:
+        action: AddAction | ListAction = subparsers("add", "list")
+
+    parsed = Args.parse("add --name foo".split())
+    assert parsed.action.act() == "foo"
+
+    parsed = Args.parse("list".split())
+    assert parsed.action.act() == "False"
+
+    parsed = Args.parse("list -a".split())
+    assert parsed.action.act() == "True"
