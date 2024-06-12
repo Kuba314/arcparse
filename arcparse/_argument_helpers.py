@@ -1,5 +1,5 @@
 from collections.abc import Callable, Collection
-from typing import Any
+from typing import Any, overload
 import re
 
 from arcparse.errors import InvalidArgument
@@ -122,8 +122,21 @@ def mx_group(*, required: bool = False) -> PartialMxGroup:
     return PartialMxGroup(required=required)
 
 
+@overload
 def subparsers(*args: str) -> Any:
-    return PartialSubparsers(names=list(args))
+    ...
+
+@overload
+def subparsers[T](**kwargs: type[T]) -> T:
+    ...
+
+def subparsers(*args, **kwargs) -> Any:
+    if args:
+        assert all(isinstance(arg, str) for arg in args)
+        return PartialSubparsers(names=list(args))
+    elif kwargs:
+        assert all(isinstance(value, type) for value in kwargs.values())
+        return PartialSubparsers(names=list(kwargs.keys()), shapes=list(kwargs.values()))
 
 
 def dict_positional[T](

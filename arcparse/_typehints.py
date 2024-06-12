@@ -50,3 +50,7 @@ def extract_literal_strings(typehint: type) -> list[str] | None:
         return None
 
     return list(args)
+
+
+def union_contains_none(typehint: type) -> bool:
+    return get_origin(typehint) in {Union, UnionType} and NoneType in get_args(typehint)

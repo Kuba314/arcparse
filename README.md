@@ -149,7 +149,9 @@ class Args:
 ```
 
 ### Subparsers
-Type-hinting an argument as a union of classes creates subparsers from them in the background. Assigning from `subparsers()` gives them names as they will be entered from the command-line. Subparsers are required by default. Adding `None` to the union makes the subparsers optional.
+Use the `subparsers()` function to create subparsers. The function accepts either subparser names as `*args` or name-type pairs of `**kwargs`. The former option relies on the typehint to be a union of types, while the latter option ignores the typehint altogether, but it has to be type-compatible with the provided types.
+
+The subparsers positional is required by default. To make it optional, add `None` to the union in the typehint.
 
 When nesting subparsers, avoid giving your subparsers the same name (e.g. `action`). `argparse` doesn't seem able to differentiate between different subparser levels with the same name. This applies to arguments as well -- arguments deeper in the subparser tree will overwrite arguments with the same name being closer to the root.
 ```py
@@ -162,10 +164,6 @@ class BarArgs:
 @arcparser
 class Args:
     action: FooArgs | BarArgs = subparsers("foo", "bar")
-
-@arcparser
-class OptionalSubparsersArgs:
-    action: FooArgs | BarArgs | None = subparsers("foo", "bar")
 ```
 
 Once the arguments are parsed, the different subparsers can be triggered and distinguished like so:
@@ -182,6 +180,37 @@ elif isinstance(bar := args.action, BarArgs):
 ```
 
 Each subparser class can define methods which (if defined for all subparsers) will become available on the result. The previous `isinstance()` if statements behaviour could be moved to a method of each subparser and the method could be simply called by calling `args.action.my_method()`.
+
+The following code utilizes the previously mentioned `**kwargs` method of initializing subparsers.
+```py
+from typing import Protocol
+
+class Action(Protocol):
+    def my_method(self) -> None:
+        ...
+
+class FooArgs:
+    arg1: str
+
+    def my_method(self) -> None:
+        print(f"foo {self.arg1}")
+
+class BarArgs:
+    arg2: int = positional()
+
+    def my_method(self) -> None:
+        print(f"bar {self.arg2}")
+
+@arcparser
+class Args:
+    action: Action = subparsers(
+        foo=FooArgs,
+        bar=BarArgs,
+    )
+
+args = Args.parse("foo --arg1 baz".split())
+args.action.my_method()
+```
 
 ### Parser inheritance
 Parsers can inherit arguments from other parsers. This is useful if there are common arguments among multiple subparsers. Note that current implementation disallows inheriting directly from classes already wrapped by `@arcparser`, inherit from `ClassAlreadySubparsered.shape` instead (if `Common` was wrapped in `@arcparser`, inherit from `Common.shape`).

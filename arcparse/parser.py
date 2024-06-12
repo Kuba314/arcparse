@@ -1,6 +1,5 @@
 from collections.abc import Iterator, Sequence
 from dataclasses import dataclass, field
-from types import NoneType
 from typing import Any
 import argparse
 import inspect
@@ -15,7 +14,11 @@ from ._partial_arguments import (
     PartialSubparsers,
     PartialTriFlag,
 )
-from ._typehints import extract_optional_type, extract_subparsers_from_typehint
+from ._typehints import (
+    extract_optional_type,
+    extract_subparsers_from_typehint,
+    union_contains_none,
+)
 from .arguments import (
     BaseArgument,
     BaseValueArgument,
@@ -208,12 +211,12 @@ def _make_parser[T](shape: type[T]) -> Parser[T]:
     # collect subparsers
     match _collect_subparsers(shape):
         case (name, typehint, partial_subparsers):
-            subshapes = extract_subparsers_from_typehint(typehint)
+            subshapes = partial_subparsers.shapes or extract_subparsers_from_typehint(typehint)
             subparsers_by_name = {
                 name: _make_parser(subshape)
                 for name, subshape in zip(partial_subparsers.names, subshapes)
             }
-            subparsers = (name, Subparsers(subparsers_by_name, required=NoneType not in subshapes))
+            subparsers = (name, Subparsers(subparsers_by_name, required=not union_contains_none(typehint)))
         case _:
             subparsers = None
 

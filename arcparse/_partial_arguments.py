@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Collection
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import StrEnum
 from types import NoneType, UnionType
 from typing import Any, Literal, Union, get_args, get_origin
@@ -203,5 +203,6 @@ class PartialTriFlag(BasePartialArgument[TriFlag]):
 
 
 @dataclass
-class PartialSubparsers:
+class PartialSubparsers[T]:
     names: list[str]
+    shapes: list[T] = field(default_factory=list)

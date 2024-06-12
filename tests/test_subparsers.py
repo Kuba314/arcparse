@@ -1,5 +1,5 @@
 from types import NoneType
-from typing import Any
+from typing import Any, Protocol
 
 import pytest
 
@@ -140,3 +140,74 @@ def test_subparser_actions() -> None:
 
     parsed = Args.parse("list -a".split())
     assert parsed.action.act() == "True"
+
+
+def test_subparsers_interface() -> None:
+    class Action(Protocol):
+        def act(self) -> str:
+            ...
+
+    class AddAction:
+        name: str
+
+        def act(self) -> str:
+            return self.name
+
+    class ListAction:
+        all: bool = flag("-a", help="list all")
+
+        def act(self) -> str:
+            return str(self.all)
+
+    @arcparser
+    class Args:
+        action: Action = subparsers(
+            add=AddAction,
+            list=ListAction,
+        )
+
+    parsed = Args.parse("add --name foo".split())
+    assert parsed.action.act() == "foo"
+
+    parsed = Args.parse("list".split())
+    assert parsed.action.act() == "False"
+
+    parsed = Args.parse("list -a".split())
+    assert parsed.action.act() == "True"
+
+
+def test_subparsers_interface_optional() -> None:
+    class Action(Protocol):
+        def act(self) -> str:
+            ...
+
+    class AddAction:
+        name: str
+
+        def act(self) -> str:
+            return self.name
+
+    class ListAction:
+        all: bool = flag("-a", help="list all")
+
+        def act(self) -> str:
+            return str(self.all)
+
+    @arcparser
+    class Args:
+        action: Action | None = subparsers(
+            add=AddAction,
+            list=ListAction,
+        )
+
+    parsed = Args.parse("".split())
+    assert parsed.action is None
+
+    parsed = Args.parse("add --name foo".split())
+    assert parsed.action is not None and parsed.action.act() == "foo"
+
+    parsed = Args.parse("list".split())
+    assert parsed.action is not None and parsed.action.act() == "False"
+
+    parsed = Args.parse("list -a".split())
+    assert parsed.action is not None and parsed.action.act() == "True"
