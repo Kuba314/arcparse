@@ -6,6 +6,7 @@ This project builds on top of `argparse` by adding type-safety and allowing a mo
 ## Example usage
 ```py
 from arcparse import arcparser, flag
+from pathlib import Path
 
 @arcparser
 class Args:
