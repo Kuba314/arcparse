@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "arcparse"
-version = "0.6.16"
-description = "Declare program arguments declaratively and type-safely"
+version = "1.0.0"
+description = "Declare program arguments in a type-safe way"
 license = "MIT"
 authors = ["Jakub Rozek <jakub.rozek314@gmail.com>"]
 readme = "README.md"
