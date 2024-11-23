@@ -10,12 +10,15 @@ from arcparse.errors import InvalidParser
 class FooArgs:
     arg1: str
 
+
 class BarArgs:
     arg2: int = positional()
+
 
 @arcparser
 class ReqArgs:
     action: FooArgs | BarArgs = subparsers("foo", "bar")
+
 
 @arcparser
 class OptArgs:
@@ -106,13 +109,13 @@ def test_nested_subparsers() -> None:
         barbaz_or_boo: BarBaz | Boo = subparsers("barbaz", "boo")
 
     parsed = Args.parse("barbaz bar --bar".split())
-    assert isinstance(barbaz := parsed.barbaz_or_boo,  BarBaz) and isinstance(bar := barbaz.bar_or_baz, Bar) and bar.bar
+    assert isinstance(barbaz := parsed.barbaz_or_boo, BarBaz) and isinstance(bar := barbaz.bar_or_baz, Bar) and bar.bar
 
     parsed = Args.parse("barbaz baz --baz".split())
-    assert isinstance(barbaz := parsed.barbaz_or_boo,  BarBaz) and isinstance(baz := barbaz.bar_or_baz, Baz) and baz.baz
+    assert isinstance(barbaz := parsed.barbaz_or_boo, BarBaz) and isinstance(baz := barbaz.bar_or_baz, Baz) and baz.baz
 
     parsed = Args.parse("boo --boo".split())
-    assert isinstance(boo := parsed.barbaz_or_boo,  Boo) and boo.boo
+    assert isinstance(boo := parsed.barbaz_or_boo, Boo) and boo.boo
 
 
 def test_subparser_actions() -> None:
@@ -144,8 +147,7 @@ def test_subparser_actions() -> None:
 
 def test_subparsers_interface() -> None:
     class Action(Protocol):
-        def act(self) -> str:
-            ...
+        def act(self) -> str: ...
 
     class AddAction:
         name: str
@@ -178,8 +180,7 @@ def test_subparsers_interface() -> None:
 
 def test_subparsers_interface_optional() -> None:
     class Action(Protocol):
-        def act(self) -> str:
-            ...
+        def act(self) -> str: ...
 
     class AddAction:
         name: str

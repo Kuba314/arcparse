@@ -31,7 +31,7 @@ defaults = {
         ("--foo A --bar B -z C", {"foo": "A", "bar": "B", "baz": "C"}),
         ("--foo A -z C --boo D", {"foo": "A", "baz": "C", "boo": "D"}),
         ("--foo A -c B", {"foo": "A", "c": "B"}),
-    ]
+    ],
 )
 def test_option_valid(arg_string: str, provided: dict[str, Any]) -> None:
     parsed = Args.parse(arg_string.split())
@@ -45,8 +45,8 @@ def test_option_valid(arg_string: str, provided: dict[str, Any]) -> None:
     [
         "--foo foo --bar bar --baz baz",
         "--bar bar",
-    ]
+    ],
 )
 def test_option_invalid(arg_string: str) -> None:
     with pytest.raises(SystemExit):
-        Args.parse(args = arg_string.split())
+        Args.parse(args=arg_string.split())

@@ -15,7 +15,7 @@ defaults = {key: False for key in ["foo", "bar", "baz"]}
         ("--bar", defaults | {"bar": True}),
         ("--baz", defaults | {"baz": True}),
         ("--foo --bar --baz", {"foo": True, "bar": True, "baz": True}),
-    ]
+    ],
 )
 def test_inheritance(arg_string: str, result: dict[str, str]) -> None:
     class Parent1:
@@ -36,8 +36,10 @@ def test_inheritance(arg_string: str, result: dict[str, str]) -> None:
 class Common:
     debug: bool
 
+
 class FooArgs(Common):
     foo: bool
+
 
 class BarArgs(Common):
     bar: bool

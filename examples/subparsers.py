@@ -4,8 +4,7 @@ from arcparse import arcparser, positional, subparsers
 
 
 class Action(Protocol):
-    def run_action(self) -> None:
-        ...
+    def run_action(self) -> None: ...
 
 
 class HiAction(Action):

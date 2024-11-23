@@ -18,10 +18,10 @@ class Result(StrEnum):
 
 
 def test_itemwise() -> None:
-
     # @arcparser
     class Xd:
         results: list[Result] = option(converter=itemwise(Result.from_int))
+
     Args = arcparser(Xd)
     args = Args.parse("--results 0 1 0".split())
     assert isinstance(args.results, list)

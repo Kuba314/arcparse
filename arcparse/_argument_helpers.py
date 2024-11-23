@@ -17,7 +17,7 @@ from .arguments import Void, void
 
 def _check_short_format(short: str) -> None:
     if not re.match(r"^-[^-]+$", short):
-        raise InvalidArgument(f"Invalid argument short-hand \"{short}\", expected a dash followed by non-dash characters")
+        raise InvalidArgument(f'Invalid argument short-hand "{short}", expected a dash followed by non-dash characters')
 
 
 def positional[T](
@@ -203,6 +203,7 @@ def subparsers(*args: str) -> Any:
     """
     ...
 
+
 @overload
 def subparsers[T](**kwargs: type[T]) -> T:
     """
@@ -217,6 +218,7 @@ def subparsers[T](**kwargs: type[T]) -> T:
     :param type[T] **kwargs: Subparser shapes assigned to names used for the subparsers.
     """
     ...
+
 
 def subparsers(*args, **kwargs) -> Any:
     if args:
@@ -250,7 +252,6 @@ def dict_positional[T](
         mx_group=mx_group,
         help=help,
     )
-
 
 
 def dict_option[T](

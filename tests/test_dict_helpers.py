@@ -20,7 +20,7 @@ def test_dict_positional_default_in_dict() -> None:
     [
         ("foo", 1),
         ("bar", 0),
-    ]
+    ],
 )
 def test_dict_positional(arg_string: str, value: int) -> None:
     @arcparser
@@ -41,7 +41,7 @@ def test_dict_option_default_in_dict() -> None:
     [
         ("--foo-bar foo", 1),
         ("--foo-bar bar", 0),
-    ]
+    ],
 )
 def test_dict_option(arg_string: str, value: int) -> None:
     @arcparser

@@ -29,7 +29,9 @@ def extract_subparsers_from_typehint(typehint: type) -> list[type]:
     origin = get_origin(typehint)
     if origin in {Union, UnionType}:
         return list(get_args(typehint))
-    raise InvalidTypehint(f"Unable to extract subparser types from {typehint}, expected a non-empty union of ArcParser types")
+    raise InvalidTypehint(
+        f"Unable to extract subparser types from {typehint}, expected a non-empty union of ArcParser types"
+    )
 
 
 def extract_type_from_typehint(typehint: type) -> type:

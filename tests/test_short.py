@@ -9,6 +9,7 @@ def test_short_option_invalid() -> None:
         option("-fo-o")
 
     with pytest.raises(InvalidArgument):
+
         @arcparser
         class Args:
             foo: str = option(short_only=True)
@@ -19,6 +20,7 @@ def test_short_flag_invalid() -> None:
         flag("-fo-o")
 
     with pytest.raises(InvalidArgument):
+
         @arcparser
         class Args:
             foo: bool = flag(short_only=True)

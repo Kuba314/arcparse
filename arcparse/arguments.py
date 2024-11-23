@@ -26,12 +26,12 @@ __all__ = [
 class Void:
     pass
 
+
 void = Void()
 
 
 class ContainerApplicable(Protocol):
-    def apply(self, actions_container: _ActionsContainer, name: str) -> None:
-        ...
+    def apply(self, actions_container: _ActionsContainer, name: str) -> None: ...
 
 
 @dataclass(kw_only=True)
@@ -44,8 +44,7 @@ class BaseArgument(ABC, ContainerApplicable):
         actions_container.add_argument(*args, **kwargs)
 
     @abstractmethod
-    def get_argparse_args(self, name: str) -> list[str]:
-        ...
+    def get_argparse_args(self, name: str) -> list[str]: ...
 
     def get_argparse_kwargs(self, name: str) -> dict[str, Any]:
         kwargs = {}

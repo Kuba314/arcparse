@@ -1,5 +1,3 @@
-
-
 class InvalidParser(Exception):
     pass
 

@@ -39,7 +39,7 @@ defaults = {
         ("-z", {"baz": True}),
         ("-o", {"boo": True}),
         ("-c", {"c": True}),
-    ]
+    ],
 )
 def test_flag_valid(arg_string: str, provided: dict[str, Any]) -> None:
     parsed = Args.parse(arg_string.split())
@@ -56,12 +56,11 @@ def test_flag_valid(arg_string: str, provided: dict[str, Any]) -> None:
         "--no-barrr",
         "--no-foo",
         "--boo",
-    ]
+    ],
 )
 def test_flag_invalid(arg_string: str) -> None:
     with pytest.raises(SystemExit):
-        Args.parse(args = arg_string.split())
-
+        Args.parse(args=arg_string.split())
 
 
 @pytest.mark.parametrize(
