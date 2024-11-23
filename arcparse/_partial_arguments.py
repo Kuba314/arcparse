@@ -3,7 +3,7 @@ from collections.abc import Callable, Collection
 from dataclasses import dataclass, field
 from enum import StrEnum
 from types import NoneType, UnionType
-from typing import Any, Literal, Union, get_args, get_origin
+from typing import Any, Literal, Union, cast, get_args, get_origin
 import re
 
 from arcparse.errors import InvalidArgument, InvalidTypehint, MissingConverter
@@ -84,8 +84,10 @@ class BasePartialValueArgument[T, R: BaseValueArgument](BaseSinglePartialArgumen
                     self.converter = re.compile  # type: ignore (somehow incompatible)
                 elif issubclass(type_, StrEnum):
                     self.choices = set(map(str, type_))
+                elif callable(type_):
+                    self.converter = cast(Callable[[str], T], type_)
                 else:
-                    self.converter = type_
+                    raise InvalidTypehint(f"Type of argument \"{name}\" is not callable")
 
         choices = self.choices
         if literal_choices := extract_literal_strings(type_):
