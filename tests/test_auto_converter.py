@@ -30,6 +30,7 @@ defaults = {
     "literal": None,
 }
 
+
 @pytest.mark.parametrize(
     "arg_string,provided",
     [
@@ -40,7 +41,7 @@ defaults = {
         ("--regex ^\\d+$", {"regex": re.compile(r"^\d+$")}),
         ("--literal yes", {"literal": "yes"}),
         ("--literal no", {"literal": "no"}),
-    ]
+    ],
 )
 def test_auto_converter_valid(arg_string: str, provided: dict[str, Any]) -> None:
     parsed = Args.parse(arg_string.split())
@@ -49,17 +50,10 @@ def test_auto_converter_valid(arg_string: str, provided: dict[str, Any]) -> None
         assert getattr(parsed, k) == v
 
 
-@pytest.mark.parametrize(
-    "arg_string",
-    [
-        "--num foo",
-        "--result bar",
-        "--regex '('"
-    ]
-)
+@pytest.mark.parametrize("arg_string", ["--num foo", "--result bar", "--regex '('"])
 def test_option_invalid(arg_string: str) -> None:
     with pytest.raises(BaseException):
-        Args.parse(args = arg_string.split())
+        Args.parse(args=arg_string.split())
 
 
 def test_enum_positional() -> None:

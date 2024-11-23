@@ -3,7 +3,7 @@ from collections.abc import Callable, Collection
 from dataclasses import dataclass, field
 from enum import StrEnum
 from types import NoneType, UnionType
-from typing import Any, Literal, Union, get_args, get_origin
+from typing import Any, Literal, Union, cast, get_args, get_origin
 import re
 
 from arcparse.errors import InvalidArgument, InvalidTypehint, MissingConverter
@@ -37,8 +37,7 @@ class BasePartialArgument[R: ContainerApplicable](ABC):
     mx_group: PartialMxGroup | None = None
 
     @abstractmethod
-    def resolve_with_typehint(self, name: str, typehint: type) -> R:
-        ...
+    def resolve_with_typehint(self, name: str, typehint: type) -> R: ...
 
     def resolve_to_kwargs(self, name: str, typehint: type) -> dict[str, Any]:
         return {}
@@ -75,7 +74,9 @@ class BasePartialValueArgument[T, R: BaseValueArgument](BaseSinglePartialArgumen
             if get_origin(typehint) in {Union, UnionType}:
                 union_args = get_args(typehint)
                 if len(union_args) > 2 or NoneType not in union_args:
-                    raise InvalidTypehint("Union can be used only for optional arguments (length of 2, 1 of them being None)")
+                    raise InvalidTypehint(
+                        "Union can be used only for optional arguments (length of 2, 1 of them being None)"
+                    )
 
             if type_ is not str and get_origin(type_) != Literal:
                 if extract_collection_type(typehint):
@@ -84,8 +85,10 @@ class BasePartialValueArgument[T, R: BaseValueArgument](BaseSinglePartialArgumen
                     self.converter = re.compile  # type: ignore (somehow incompatible)
                 elif issubclass(type_, StrEnum):
                     self.choices = set(map(str, type_))
+                elif callable(type_):
+                    self.converter = cast(Callable[[str], T], type_)
                 else:
-                    self.converter = type_
+                    raise InvalidTypehint(f'Type of argument "{name}" is not callable')
 
         choices = self.choices
         if literal_choices := extract_literal_strings(type_):
@@ -103,7 +106,7 @@ class BasePartialValueArgument[T, R: BaseValueArgument](BaseSinglePartialArgumen
 
         if extract_optional_type(typehint):
             kwargs["optional"] = True
-        elif extract_collection_type(typehint) and not self.at_least_one:
+        elif extract_collection_type(typehint) and not self.at_least_one and self.default is void:
             kwargs["default"] = []
 
         return kwargs
@@ -143,7 +146,9 @@ class PartialOption[T](BasePartialValueArgument[T, Option]):
 
     def resolve_with_typehint(self, name: str, typehint: type) -> Option:
         if self.short_only and self.short is None and len(name) > 1:
-            raise InvalidArgument(f"Argument \"{name}\" requested short_only but name is longer than 1 character and no short-hand was specified")
+            raise InvalidArgument(
+                f'Argument "{name}" requested short_only but name is longer than 1 character and no short-hand was specified'
+            )
 
         kwargs = self.resolve_to_kwargs(name, typehint)
         return Option(**kwargs)
@@ -188,7 +193,9 @@ class PartialFlag(BaseSinglePartialArgument[Flag]):
 
     def resolve_with_typehint(self, name: str, typehint: type) -> Flag:
         if self.short_only and self.short is None and len(name) > 1:
-            raise InvalidArgument(f"Argument \"{name}\" requested short_only but name is longer than 1 character and no short-hand was specified")
+            raise InvalidArgument(
+                f'Argument "{name}" requested short_only but name is longer than 1 character and no short-hand was specified'
+            )
 
         kwargs = self.resolve_to_kwargs(name, typehint)
         kwargs["short"] = self.short

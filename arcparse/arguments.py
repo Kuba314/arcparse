@@ -26,12 +26,12 @@ __all__ = [
 class Void:
     pass
 
+
 void = Void()
 
 
 class ContainerApplicable(Protocol):
-    def apply(self, actions_container: _ActionsContainer, name: str) -> None:
-        ...
+    def apply(self, actions_container: _ActionsContainer, name: str) -> None: ...
 
 
 @dataclass(kw_only=True)
@@ -44,8 +44,7 @@ class BaseArgument(ABC, ContainerApplicable):
         actions_container.add_argument(*args, **kwargs)
 
     @abstractmethod
-    def get_argparse_args(self, name: str) -> list[str]:
-        ...
+    def get_argparse_args(self, name: str) -> list[str]: ...
 
     def get_argparse_kwargs(self, name: str) -> dict[str, Any]:
         kwargs = {}
@@ -163,6 +162,11 @@ class Option[T](BaseValueArgument[T]):
             kwargs["required"] = True
         if self.append:
             kwargs["action"] = "append"
+
+        # append with default is handled manually later, replace with empty list for now because
+        # argparse always uses default instead of using it only when no arguments are provided
+        if self.append:
+            kwargs["default"] = []
 
         return kwargs
 

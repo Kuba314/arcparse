@@ -23,6 +23,7 @@ from .arguments import (
     BaseArgument,
     BaseValueArgument,
     MxGroup,
+    Option,
     Subparsers,
     TriFlag,
     void,
@@ -56,6 +57,11 @@ class Parser[T]:
 
         parsed = ap_parser.parse_args(args).__dict__
 
+        # assign default values for append arguments if no arguments were provided
+        for name, arg in self.all_arguments:
+            if isinstance(arg, Option) and arg.append and not parsed[name]:
+                parsed[name] = arg.default
+
         # reduce tri_flags
         tri_flag_names = [name for name, arg in self.all_arguments if isinstance(arg, TriFlag)]
         _reduce_tri_flags(parsed, tri_flag_names)
@@ -85,7 +91,9 @@ class Parser[T]:
             # optional subparsers will result in `dict[name]` being `None`
             if chosen_subparser := parsed.get(name):
                 if chosen_subparser not in subparsers.sub_parsers:
-                    raise InvalidParser(f"`{self.shape.__name__}.{name}` was overriden by argument/subparser with same name, got \"{chosen_subparser}\" but should be one of {set(subparsers.sub_parsers.keys())}")
+                    raise InvalidParser(
+                        f'`{self.shape.__name__}.{name}` was overriden by argument/subparser with same name, got "{chosen_subparser}" but should be one of {set(subparsers.sub_parsers.keys())}'
+                    )
                 sub_parser = subparsers.sub_parsers[chosen_subparser]
                 parsed[name] = sub_parser._construct_object_with_parsed(parsed)
 
@@ -97,10 +105,7 @@ class Parser[T]:
             value = parsed.get(name, argument.default)
             if isinstance(argument.converter, itemwise):
                 assert isinstance(value, list)
-                parsed[name] = [
-                    argument.converter(item) if isinstance(item, str) else item
-                    for item in value
-                ]
+                parsed[name] = [argument.converter(item) if isinstance(item, str) else item for item in value]
             else:
                 parsed[name] = argument.converter(value) if isinstance(value, str) else value
 
@@ -213,8 +218,7 @@ def _make_parser[T](shape: type[T]) -> Parser[T]:
         case (name, typehint, partial_subparsers):
             subshapes = partial_subparsers.shapes or extract_subparsers_from_typehint(typehint)
             subparsers_by_name = {
-                name: _make_parser(subshape)
-                for name, subshape in zip(partial_subparsers.names, subshapes)
+                name: _make_parser(subshape) for name, subshape in zip(partial_subparsers.names, subshapes)
             }
             subparsers = (name, Subparsers(subparsers_by_name, required=not union_contains_none(typehint)))
         case _:
