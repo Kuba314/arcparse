@@ -164,6 +164,11 @@ class Option[T](BaseValueArgument[T]):
         if self.append:
             kwargs["action"] = "append"
 
+        # append with default is handled manually later, replace with empty list for now because
+        # argparse always uses default instead of using it only when no arguments are provided
+        if self.append:
+            kwargs["default"] = []
+
         return kwargs
 
 

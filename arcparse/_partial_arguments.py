@@ -103,7 +103,7 @@ class BasePartialValueArgument[T, R: BaseValueArgument](BaseSinglePartialArgumen
 
         if extract_optional_type(typehint):
             kwargs["optional"] = True
-        elif extract_collection_type(typehint) and not self.at_least_one:
+        elif extract_collection_type(typehint) and not self.at_least_one and self.default is void:
             kwargs["default"] = []
 
         return kwargs

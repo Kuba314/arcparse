@@ -23,6 +23,7 @@ from .arguments import (
     BaseArgument,
     BaseValueArgument,
     MxGroup,
+    Option,
     Subparsers,
     TriFlag,
     void,
@@ -55,6 +56,11 @@ class Parser[T]:
         self.apply(ap_parser)
 
         parsed = ap_parser.parse_args(args).__dict__
+
+        # assign default values for append arguments if no arguments were provided
+        for name, arg in self.all_arguments:
+            if isinstance(arg, Option) and arg.append and not parsed[name]:
+                parsed[name] = arg.default
 
         # reduce tri_flags
         tri_flag_names = [name for name, arg in self.all_arguments if isinstance(arg, TriFlag)]

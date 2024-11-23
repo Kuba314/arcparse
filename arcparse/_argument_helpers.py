@@ -41,6 +41,7 @@ def positional[T](
     )  # type: ignore
 
 
+# Note: default is replaced by arguments when `append` is used.
 def option[T](
     short: str | None = None,
     *,
@@ -59,9 +60,6 @@ def option[T](
 
     if short_only and name_override is not None:
         raise InvalidArgument("`short_only` cannot be True if `name_override` is provided")
-
-    if append and at_least_one:
-        raise InvalidArgument("`append` is incompatible with `at_least_one`")
 
     return PartialOption(
         short=short,

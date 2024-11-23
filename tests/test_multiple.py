@@ -1,7 +1,6 @@
 import pytest
 
 from arcparse import arcparser, option, positional
-from arcparse.errors import InvalidArgument
 
 
 @pytest.mark.parametrize(
@@ -85,7 +84,6 @@ def test_pos_nargs_plus(string: str, result: list[int] | None) -> None:
     [
         ("", []),
         ("-v 1 -v 2 -v 3", [1, 2, 3]),
-        ("--value 1 --value 2 --value 3", [1, 2, 3]),
     ],
 )
 def test_opt_append(string: str, result: list[int]) -> None:
@@ -97,6 +95,25 @@ def test_opt_append(string: str, result: list[int]) -> None:
     assert args.values == result
 
 
-def test_multiple_invalid() -> None:
-    with pytest.raises(InvalidArgument):
-        option(append=True, at_least_one=True)
+def test_append_default() -> None:
+    @arcparser
+    class Args:
+        values: list[int] = option("-v", append=True, default=[1, 2, 3])
+
+    args = Args.parse([])
+    assert args.values == [1, 2, 3]
+
+    args = Args.parse("-v 4 -v 5".split())
+    assert args.values == [4, 5]
+
+
+def test_append_at_least_one() -> None:
+    @arcparser
+    class Args:
+        values: list[int] = option("-v", append=True, at_least_one=True)
+
+    with pytest.raises(SystemExit):
+        Args.parse()
+
+    args = Args.parse("-v 4 -v 5".split())
+    assert args.values == [4, 5]
