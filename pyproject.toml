@@ -24,13 +24,11 @@ python = "^3.12"
 black = "^24.3.0"
 pyright = "^1.1.335"
 pytest = "^7.4.3"
-isort = "^5.13.2"
 ruff = "^0.3.7"
 
-[tool.isort]
-profile = "black"
-from_first = "true"
-lines_after_imports = 2
+[tool.ruff.lint.isort]
+from-first = true
+lines-after-imports = 2
 
 [build-system]
 requires = ["poetry-core"]

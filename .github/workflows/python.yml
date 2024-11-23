@@ -23,10 +23,8 @@ jobs:
       uses: abatilo/actions-poetry@v2
     - name: Install poetry project
       run: poetry install
-    - name: Check unused imports
-      run: poetry run ruff --select F401 .
-    - name: Sort imports
-      run: poetry run isort --check --diff .
+    - name: Lint
+      run: poetry run ruff check --extend-select I
     - name: Run pyright
       run: poetry run pyright
     - name: Run pytest
