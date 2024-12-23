@@ -8,5 +8,5 @@ class Args:
     flag: bool | None = flag(mx_group=group)
 
 
-if __name__ == "main":
+if __name__ == "__main__":
     print(vars(Args.parse()))
