@@ -8,15 +8,15 @@ repos:
         args: ["--branch", "master", "--branch", "main"]
   - repo: local
     hooks:
-    - id: ruff
-      name: ruff
+    - id: format
+      name: format
       language: system
-      entry: poetry run ruff check
+      entry: poetry run ruff format --check --diff
       types: [python]
-    - id: isort
-      name: isort
+    - id: lint
+      name: lint
       language: system
-      entry: poetry run isort --check --diff
+      entry: poetry run ruff check --extend-select I
       types: [python]
     - id: pyright
       name: pyright
