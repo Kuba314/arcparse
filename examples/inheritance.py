@@ -18,5 +18,5 @@ class Args:
     action: FooArgs | BarArgs = subparsers("foo", "bar")
 
 
-if __name__ == "main":
+if __name__ == "__main__":
     print(vars(Args.parse()))

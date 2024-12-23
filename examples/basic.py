@@ -21,5 +21,5 @@ class Args:
     n_siblings: int = 0
 
 
-if __name__ == "main":
+if __name__ == "__main__":
     print(vars(Args.parse()))

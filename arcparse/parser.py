@@ -1,6 +1,6 @@
-from collections.abc import Iterator, Sequence
+from collections.abc import Container, Iterator, Sequence
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, cast
 import argparse
 import inspect
 
@@ -50,6 +50,15 @@ class Parser[T]:
         if self.subparsers is not None:
             for subparser in self.subparsers[1].sub_parsers.values():
                 yield from subparser.all_arguments
+
+    @property
+    def shallow_names(self) -> Iterator[str]:
+        yield from self.arguments.keys()
+        for mx_group in self.mx_groups:
+            yield from mx_group.arguments.keys()
+
+        if self.subparsers is not None:
+            yield self.subparsers[0]
 
     def parse(self, args: Sequence[str] | None = None) -> T:
         ap_parser = argparse.ArgumentParser()
@@ -109,18 +118,36 @@ class Parser[T]:
             else:
                 parsed[name] = argument.converter(value) if isinstance(value, str) else value
 
-        return _instantiate_from_dict(self.shape, parsed)
+        return _instantiate_from_dict(self.shape, parsed, list(self.shallow_names))
 
 
-def _instantiate_from_dict[T](cls: type[T], dict_: dict[str, Any]) -> T:
+def _instantiate_from_dict[T](cls: type[T], dict_: dict[str, Any], move_names: Container[str]) -> T:
+    """Instantiate shape class moving only some attributes to it."""
     values = {}
-    for _cls in cls.__mro__:
-        for name in inspect.get_annotations(_cls, eval_str=True).keys():
-            values[name] = dict_.pop(name)
+    for key in list(dict_.keys()):
+        if key in move_names:
+            values[key] = dict_.pop(key)
 
-    obj = cls()
-    obj.__dict__ = values
-    return obj
+    def instantiate_arg_proxy(cls: type[T], __dict__: dict[str, Any]) -> T:
+        """Instantiate cls while allowing some attribute gets and disallowing gets of BasePartialArgument values"""
+
+        class ArgProxy(cls):
+            def __getattribute__(self, name: str):
+                if name == "__dict__":
+                    return __dict__
+
+                if name in __dict__:
+                    return __dict__[name]
+
+                value = super().__getattribute__(name)
+                if not isinstance(value, BasePartialArgument):
+                    return value
+
+                raise AttributeError(f"'{cls.__name__}' parser didn't define argument '{name}'", name=name, obj=self)
+
+        return cast(T, ArgProxy())
+
+    return instantiate_arg_proxy(cls, values)
 
 
 def _reduce_tri_flags(dict_: dict[str, Any], tri_flag_names: list[str]) -> None:
@@ -224,12 +251,16 @@ def _make_parser[T](shape: type[T]) -> Parser[T]:
         case _:
             subparsers = None
 
-    return Parser(
+    parser = Parser(
         shape,
         arguments,
         list(mx_groups.values()),
         subparsers,
     )
+    if (post_init := getattr(shape, "__post_init__", None)) and callable(post_init):
+        post_init(parser)
+
+    return parser
 
 
 def arcparser[T](shape: type[T]) -> Parser[T]:

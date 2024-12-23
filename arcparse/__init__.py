@@ -10,7 +10,7 @@ from ._argument_helpers import (
     tri_flag,
 )
 from .converters import itemwise
-from .parser import InvalidArgument, InvalidParser, InvalidTypehint, arcparser
+from .parser import InvalidArgument, InvalidParser, InvalidTypehint, Parser, arcparser
 
 
 __all__ = [
@@ -28,4 +28,5 @@ __all__ = [
     "InvalidParser",
     "InvalidArgument",
     "InvalidTypehint",
+    "Parser",
 ]

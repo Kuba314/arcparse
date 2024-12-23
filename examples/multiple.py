@@ -14,5 +14,5 @@ class Args:
     liked_movies: list[str] = option(at_least_one=True)
 
 
-if __name__ == "main":
+if __name__ == "__main__":
     print(vars(Args.parse()))
