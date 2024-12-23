@@ -35,7 +35,7 @@ $ pip install arcparse
 - Type conversions
 - Mutually exclusive groups
 - Subparsers
-- Parser inheritance
+- Parser inheritance (with overriding)
 
 ## Credits
 This project was inspired by [swansonk14/typed-argument-parser](https://github.com/swansonk14/typed-argument-parser).
