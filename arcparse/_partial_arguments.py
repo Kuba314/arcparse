@@ -116,10 +116,6 @@ class BasePartialValueArgument[T, R: BaseValueArgument](BaseSinglePartialArgumen
 class PartialPositional[T](BasePartialValueArgument[T, Positional]):
     def resolve_with_typehint(self, name: str, typehint: type) -> Positional:
         kwargs = self.resolve_to_kwargs(name, typehint)
-        return Positional(**kwargs)
-
-    def resolve_to_kwargs(self, name: str, typehint: type) -> dict[str, Any]:
-        kwargs = super().resolve_to_kwargs(name, typehint)
 
         type_is_optional = bool(extract_optional_type(typehint))
         type_is_collection = bool(extract_collection_type(typehint))
@@ -135,7 +131,7 @@ class PartialPositional[T](BasePartialValueArgument[T, Positional]):
             kwargs["nargs"] = "+" if self.at_least_one else "*"
             kwargs["metavar"] = self.name_override
 
-        return kwargs
+        return Positional(name=name, **kwargs)
 
 
 @dataclass
@@ -151,10 +147,6 @@ class PartialOption[T](BasePartialValueArgument[T, Option]):
             )
 
         kwargs = self.resolve_to_kwargs(name, typehint)
-        return Option(**kwargs)
-
-    def resolve_to_kwargs(self, name: str, typehint: type) -> dict[str, Any]:
-        kwargs = super().resolve_to_kwargs(name, typehint)
         kwargs["short"] = self.short
         kwargs["short_only"] = self.short_only
 
@@ -170,6 +162,7 @@ class PartialOption[T](BasePartialValueArgument[T, Option]):
             if self.choices is None:  # choices generate custom `{foo,bar}` metavar in argparse
                 kwargs["metavar"] = self.name_override.replace("-", "_").upper()
         elif self.short_only and self.short is not None:
+            kwargs["name"] = name
             kwargs["dest"] = name
         else:
             kwargs["name"] = name
@@ -181,8 +174,7 @@ class PartialOption[T](BasePartialValueArgument[T, Option]):
             kwargs["optional"] = True
         elif self.mx_group is not None:
             raise InvalidArgument("Arguments in mutually exclusive group have to have a default")
-
-        return kwargs
+        return Option(**kwargs)
 
 
 @dataclass
@@ -201,7 +193,7 @@ class PartialFlag(BaseSinglePartialArgument[Flag]):
         kwargs["short"] = self.short
         kwargs["short_only"] = self.short_only
         kwargs["no_flag"] = self.no_flag
-        return Flag(**kwargs)
+        return Flag(name=name, **kwargs)
 
 
 class PartialTriFlag(BasePartialArgument[TriFlag]):

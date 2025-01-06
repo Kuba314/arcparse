@@ -20,7 +20,7 @@ class Args(BaseArgs):
         del parser.arguments["bar"]
 
         # create new argument
-        parser.arguments["baz"] = Option("baz", default="baz")
+        parser.arguments["baz"] = Option("baz", name="baz", default="baz")
 
 
 if __name__ == "__main__":

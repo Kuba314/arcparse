@@ -32,7 +32,7 @@ def test_override_add_argument() -> None:
 
         @staticmethod
         def __post_init__(parser: Parser) -> None:
-            parser.arguments["bar"] = Option("bar")
+            parser.arguments["bar"] = Option("bar", name="bar")
 
     with pytest.raises(SystemExit):
         Args.parse("--foo foo".split())
