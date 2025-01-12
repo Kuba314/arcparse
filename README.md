@@ -5,12 +5,12 @@ This project builds on top of `argparse` by adding type-safety and allowing a mo
 
 ## Example usage
 ```py
-from arcparse import arcparser, flag
+from arcparse import arcparser, flag, positional
 from pathlib import Path
 
 @arcparser
 class Args:
-    path: Path
+    path: Path = positional()
     recurse: bool = flag("-r")
     item_limit: int = 100
     output_path: Path | None
@@ -19,6 +19,21 @@ args = Args.parse()
 print(f"Scanning {args.path}...")
 ...
 ```
+<details>
+    <summary>Help output of this parser</summary>
+
+    usage: program.py [-h] [-r] [--item-limit ITEM_LIMIT] [--output-path OUTPUT_PATH] path
+
+    positional arguments:
+    path
+
+    options:
+    -h, --help            show this help message and exit
+    -r, --recurse
+    --item-limit ITEM_LIMIT
+    --output-path OUTPUT_PATH
+
+</details>
 
 For more examples see [Examples](examples/).
 
