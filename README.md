@@ -44,14 +44,14 @@ $ pip install arcparse
 ```
 
 ## Features
-- Positional, Option and Flag arguments
-- Multiple values per argument
+- Positional, Option and [Flag](./examples/flag.py) arguments
 - Name overriding
-- Type conversions
-- Mutually exclusive groups
-- Subparsers
-- Parser inheritance (with overriding)
-- Presence validation
+- [Multiple values per argument](./examples/multiple.py)
+- [Type conversions](./examples/conversion.py)
+- [Mutually exclusive groups](./examples/mutual_exclusion.py)
+- [Subparsers](./examples/subparsers.py)
+- [Parser inheritance](./examples/inheritance.py) (with [overriding](./examples/override.py))
+- [Presence validation](./examples/presence_validation.py)
 
 ## Credits
 This project was inspired by [swansonk14/typed-argument-parser](https://github.com/swansonk14/typed-argument-parser).
