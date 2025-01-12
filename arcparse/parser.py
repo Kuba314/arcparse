@@ -19,6 +19,7 @@ from ._typehints import (
     extract_subparsers_from_typehint,
     union_contains_none,
 )
+from ._validations import validate_with
 from .arguments import (
     BaseArgument,
     BaseValueArgument,
@@ -105,6 +106,9 @@ class Parser[T]:
                     )
                 sub_parser = subparsers.sub_parsers[chosen_subparser]
                 parsed[name] = sub_parser._construct_object_with_parsed(parsed)
+
+        if (validations := getattr(self.shape, "__presence_validations__", None)) and callable(validations):
+            validate_with(self.arguments, cast(Any, validations).__func__, parsed)
 
         # apply argument converters
         for name, argument in self.all_arguments:
