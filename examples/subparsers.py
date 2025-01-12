@@ -27,4 +27,7 @@ class Args:
 
 
 if __name__ == "__main__":
-    print(vars(Args.parse()))
+    parsed = Args.parse()
+    print(vars(parsed))
+
+    parsed.action.run_action()

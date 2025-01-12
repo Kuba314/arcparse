@@ -5,12 +5,12 @@ This project builds on top of `argparse` by adding type-safety and allowing a mo
 
 ## Example usage
 ```py
-from arcparse import arcparser, flag
+from arcparse import arcparser, flag, positional
 from pathlib import Path
 
 @arcparser
 class Args:
-    path: Path
+    path: Path = positional()
     recurse: bool = flag("-r")
     item_limit: int = 100
     output_path: Path | None
@@ -19,6 +19,21 @@ args = Args.parse()
 print(f"Scanning {args.path}...")
 ...
 ```
+<details>
+    <summary>Help output of this parser</summary>
+
+    usage: program.py [-h] [-r] [--item-limit ITEM_LIMIT] [--output-path OUTPUT_PATH] path
+
+    positional arguments:
+    path
+
+    options:
+    -h, --help            show this help message and exit
+    -r, --recurse
+    --item-limit ITEM_LIMIT
+    --output-path OUTPUT_PATH
+
+</details>
 
 For more examples see [Examples](examples/).
 
@@ -29,13 +44,14 @@ $ pip install arcparse
 ```
 
 ## Features
-- Positional, Option and Flag arguments
-- Multiple values per argument
+- Positional, Option and [Flag](./examples/flag.py) arguments
 - Name overriding
-- Type conversions
-- Mutually exclusive groups
-- Subparsers
-- Parser inheritance (with overriding)
+- [Multiple values per argument](./examples/multiple.py)
+- [Type conversions](./examples/conversion.py)
+- [Mutually exclusive groups](./examples/mutual_exclusion.py)
+- [Subparsers](./examples/subparsers.py)
+- [Parser inheritance](./examples/inheritance.py) (with [overriding](./examples/override.py))
+- [Presence validation](./examples/presence_validation.py)
 
 ## Credits
 This project was inspired by [swansonk14/typed-argument-parser](https://github.com/swansonk14/typed-argument-parser).

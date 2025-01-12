@@ -36,17 +36,22 @@ class ContainerApplicable(Protocol):
 
 @dataclass(kw_only=True)
 class BaseArgument(ABC, ContainerApplicable):
+    name: str
     help: str | None = None
 
+    @property
+    @abstractmethod
+    def display_name(self) -> str: ...
+
     def apply(self, actions_container: _ActionsContainer, name: str) -> None:
-        args = self.get_argparse_args(name)
-        kwargs = self.get_argparse_kwargs(name)
+        args = self.get_argparse_args()
+        kwargs = self.get_argparse_kwargs()
         actions_container.add_argument(*args, **kwargs)
 
     @abstractmethod
-    def get_argparse_args(self, name: str) -> list[str]: ...
+    def get_argparse_args(self) -> list[str]: ...
 
-    def get_argparse_kwargs(self, name: str) -> dict[str, Any]:
+    def get_argparse_kwargs(self) -> dict[str, Any]:
         kwargs = {}
         if self.help is not None:
             kwargs["help"] = self.help
@@ -59,31 +64,38 @@ class Flag(BaseArgument):
     short_only: bool = False
     no_flag: bool = False
 
-    def get_argparse_args(self, name: str) -> list[str]:
+    @property
+    def display_name(self) -> str:
         if self.no_flag:
-            args = [f"--no-{name.replace("_", "-")}"]
-        else:
-            args = [f"--{name.replace("_", "-")}"]
+            return f"--no-{self.name.replace("_", "-")}"
+        return f"--{self.name.replace("_", "-")}"
 
+    def get_argparse_args(self) -> list[str]:
         if self.short_only:
             if self.short is not None:
                 return [self.short]
-            else:
-                return [f"-{name}"]
-        elif self.short is not None:
-            args.insert(0, self.short)
+            return [f"-{self.name}"]
 
+        args = [self.display_name]
+        if self.short is not None:
+            args.insert(0, self.short)
         return args
 
-    def get_argparse_kwargs(self, name: str) -> dict[str, Any]:
-        kwargs = super().get_argparse_kwargs(name)
+    def get_argparse_kwargs(self) -> dict[str, Any]:
+        kwargs = super().get_argparse_kwargs()
         kwargs["action"] = "store_true" if not self.no_flag else "store_false"
 
-        kwargs["dest"] = name
+        kwargs["dest"] = self.name
         return kwargs
 
 
 class TriFlag(ContainerApplicable):
+    name: str
+
+    @property
+    def display_name(self) -> str:
+        return f"--(no-){self.name.replace("_", "-")}"
+
     def apply(self, actions_container: _ActionsContainer, name: str) -> None:
         # if actions_container is not an mx group, make it one, argparse
         # doesn't support mx group nesting
@@ -104,8 +116,8 @@ class BaseValueArgument[T](BaseArgument):
     optional: bool = False
     metavar: str | None = None
 
-    def get_argparse_kwargs(self, name: str) -> dict[str, Any]:
-        kwargs = super().get_argparse_kwargs(name)
+    def get_argparse_kwargs(self) -> dict[str, Any]:
+        kwargs = super().get_argparse_kwargs()
 
         if self.default is not void:
             kwargs["default"] = self.default
@@ -121,11 +133,15 @@ class BaseValueArgument[T](BaseArgument):
 
 @dataclass
 class Positional[T](BaseValueArgument[T]):
-    def get_argparse_args(self, name: str) -> list[str]:
-        return [name]
+    @property
+    def display_name(self) -> str:
+        return self.name
 
-    def get_argparse_kwargs(self, name: str) -> dict[str, Any]:
-        kwargs = super().get_argparse_kwargs(name)
+    def get_argparse_args(self) -> list[str]:
+        return [self.name]
+
+    def get_argparse_kwargs(self) -> dict[str, Any]:
+        kwargs = super().get_argparse_kwargs()
 
         if self.nargs is None and (self.optional or self.default is not void):
             kwargs["nargs"] = "?"
@@ -135,26 +151,28 @@ class Positional[T](BaseValueArgument[T]):
 
 @dataclass
 class Option[T](BaseValueArgument[T]):
-    name: str | None = None
     dest: str | None = None
     short: str | None = None
     short_only: bool = False
     append: bool = False
 
-    def get_argparse_args(self, name: str) -> list[str]:
-        args = [f"--{(self.name or name).replace("_", "-")}"]
+    @property
+    def display_name(self) -> str:
+        return f"--{(self.name).replace("_", "-")}"
+
+    def get_argparse_args(self) -> list[str]:
         if self.short_only:
             if self.short is not None:
                 return [self.short]
-            else:
-                return [f"-{self.name or name}"]
-        elif self.short is not None:
-            args.insert(0, self.short)
+            return [f"-{self.name}"]
 
+        args = [self.display_name]
+        if self.short is not None:
+            args.insert(0, self.short)
         return args
 
-    def get_argparse_kwargs(self, name: str) -> dict[str, Any]:
-        kwargs = super().get_argparse_kwargs(name)
+    def get_argparse_kwargs(self) -> dict[str, Any]:
+        kwargs = super().get_argparse_kwargs()
 
         if self.dest is not None:
             kwargs["dest"] = self.dest

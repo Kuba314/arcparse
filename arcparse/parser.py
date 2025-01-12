@@ -19,6 +19,7 @@ from ._typehints import (
     extract_subparsers_from_typehint,
     union_contains_none,
 )
+from ._validations import validate_with
 from .arguments import (
     BaseArgument,
     BaseValueArgument,
@@ -106,6 +107,9 @@ class Parser[T]:
                 sub_parser = subparsers.sub_parsers[chosen_subparser]
                 parsed[name] = sub_parser._construct_object_with_parsed(parsed)
 
+        if (validations := getattr(self.shape, "__presence_validations__", None)) and callable(validations):
+            validate_with(self.arguments, cast(Any, validations).__func__, parsed)
+
         # apply argument converters
         for name, argument in self.all_arguments:
             if not isinstance(argument, BaseValueArgument) or argument.converter is None:
@@ -139,9 +143,10 @@ def _instantiate_from_dict[T](cls: type[T], dict_: dict[str, Any], move_names: C
                 if name in __dict__:
                     return __dict__[name]
 
-                value = super().__getattribute__(name)
-                if not isinstance(value, BasePartialArgument):
-                    return value
+                if hasattr(super(), name):
+                    value = getattr(super(), name)
+                    if not isinstance(value, BasePartialArgument):
+                        return value
 
                 raise AttributeError(f"'{cls.__name__}' parser didn't define argument '{name}'", name=name, obj=self)
 
