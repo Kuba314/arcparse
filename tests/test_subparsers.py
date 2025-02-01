@@ -212,3 +212,13 @@ def test_subparsers_interface_optional() -> None:
 
     parsed = Args.parse("list -a".split())
     assert parsed.action is not None and parsed.action.act() == "True"
+
+
+def test_untyped_kw_subparsers():
+    @arcparser
+    class Args:
+        action = subparsers(foo=FooArgs, bar=BarArgs)
+
+    parsed = Args.parse("bar 123".split())
+    assert isinstance(parsed.action, BarArgs)
+    assert parsed.action.arg2 == 123

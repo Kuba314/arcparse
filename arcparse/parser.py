@@ -215,7 +215,7 @@ def _collect_partial_arguments(cls: type) -> dict[str, tuple[type, BasePartialAr
     return arguments
 
 
-def _collect_subparsers(shape: type) -> tuple[str, type, PartialSubparsers] | None:
+def _collect_subparsers(shape: type) -> tuple[str, type | None, PartialSubparsers] | None:
     all_subparsers = [(key, value) for key, value in vars(shape).items() if isinstance(value, PartialSubparsers)]
     if not all_subparsers:
         return None
@@ -224,8 +224,9 @@ def _collect_subparsers(shape: type) -> tuple[str, type, PartialSubparsers] | No
         raise InvalidParser(f"Multiple subparsers definitions found on {shape}")
 
     name, partial_subparsers = all_subparsers[0]
-    if not (typehint := inspect.get_annotations(shape, eval_str=True).get(name)):
-        raise InvalidTypehint("subparsers have to be type-hinted")
+    typehint = inspect.get_annotations(shape, eval_str=True).get(name)
+    if not partial_subparsers.shapes and not typehint:
+        raise InvalidTypehint("name-only subparsers have to be type-hinted")
 
     return name, typehint, partial_subparsers
 
@@ -248,11 +249,16 @@ def _make_parser[T](shape: type[T]) -> Parser[T]:
     # collect subparsers
     match _collect_subparsers(shape):
         case (name, typehint, partial_subparsers):
-            subshapes = partial_subparsers.shapes or extract_subparsers_from_typehint(typehint)
+            required = typehint is None or not union_contains_none(typehint)
+            if partial_subparsers.shapes:
+                subshapes = partial_subparsers.shapes
+            else:
+                assert typehint is not None
+                subshapes = extract_subparsers_from_typehint(typehint)
             subparsers_by_name = {
                 name: _make_parser(subshape) for name, subshape in zip(partial_subparsers.names, subshapes)
             }
-            subparsers = (name, Subparsers(subparsers_by_name, required=not union_contains_none(typehint)))
+            subparsers = (name, Subparsers(subparsers_by_name, required=required))
         case _:
             subparsers = None
 
